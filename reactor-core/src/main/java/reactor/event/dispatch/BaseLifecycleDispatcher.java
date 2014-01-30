@@ -30,10 +30,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class BaseLifecycleDispatcher implements Dispatcher{
+public abstract class BaseLifecycleDispatcher implements Dispatcher {
 
-	private final AtomicBoolean alive = new AtomicBoolean(true);
-	private final ClassLoader context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+	private final AtomicBoolean alive   = new AtomicBoolean(true);
+	private final ClassLoader   context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
 	};
 
 	protected BaseLifecycleDispatcher() {
@@ -60,6 +60,63 @@ public abstract class BaseLifecycleDispatcher implements Dispatcher{
 		alive.compareAndSet(true, false);
 	}
 
+
+	@Override
+	public <E extends Event<?>> void dispatch(final Object key,
+	                                          final E event,
+	                                          final Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                          final Consumer<Throwable> errorConsumer,
+	                                          final EventRouter eventRouter,
+	                                          final Consumer<E> completionConsumer) {
+		dispatch(key, event, consumerRegistry, errorConsumer, eventRouter, completionConsumer, isInContext(), null);
+	}
+
+	@Override
+	public final <E extends Event<?>> void dispatch(E event,
+	                                                EventRouter eventRouter,
+	                                                Consumer<E> consumer,
+	                                                Consumer<Throwable> errorConsumer) {
+		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
+	}
+
+	@Override
+	public <E extends Event<?>> void assistDispatch(E event,
+	                                                EventRouter eventRouter,
+	                                                Consumer<E> consumer,
+	                                                Consumer<Throwable> errorConsumer,
+	                                                DispatchingAssistant dispatchingAssistant) {
+		assistDispatch(null, event, null, errorConsumer, eventRouter, consumer, dispatchingAssistant);
+	}
+
+	@Override
+	public <E extends Event<?>> void assistDispatch(Object key,
+	                                                E event,
+	                                                Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                                Consumer<Throwable> errorConsumer,
+	                                                EventRouter eventRouter,
+	                                                Consumer<E> completionConsumer,
+	                                                DispatchingAssistant dispatchingAssistant) {
+		if (null != dispatchingAssistant) {
+			Boolean contextStrategy = dispatchingAssistant.isDispatchOnNextIteration();
+
+			dispatchingAssistant.dispatcher(this);
+			Task<E> task = null;
+			if (dispatchingAssistant.isSafeDispatch()) {
+				task = createSafeTask();
+				if(dispatchingAssistant.recoverPredicate(task == null, key, event)){
+					dispatchingAssistant.recover(key, event, completionConsumer);
+					return;
+				}
+			}
+
+			dispatch(key, event, consumerRegistry, errorConsumer, eventRouter, completionConsumer,
+					contextStrategy == null ? isInContext() : contextStrategy, task);
+
+		} else {
+			dispatch(key, event, consumerRegistry, errorConsumer, eventRouter, completionConsumer);
+		}
+	}
+
 	/**
 	 * Dispatchers can be traced through a {@code contextClassLoader} to let producers adapting their
 	 * dispatching strategy
@@ -74,16 +131,29 @@ public abstract class BaseLifecycleDispatcher implements Dispatcher{
 		return context;
 	}
 
-	@Override
-	public final <E extends Event<?>> void dispatch(E event,
-	                                                EventRouter eventRouter,
-	                                                Consumer<E> consumer,
-	                                                Consumer<Throwable> errorConsumer) {
-		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
-	}
+	protected  abstract <E extends Event<?>> void dispatch(final Object key,
+	                                              final E event,
+	                                              final Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                              final Consumer<Throwable> errorConsumer,
+	                                              final EventRouter eventRouter,
+	                                              final Consumer<E> completionConsumer,
+	                                              final boolean isInContext,
+	                                              final Task<E> safeTask);
 
 
+	/**
+	 * Must return a fresh task instance
+	 * @param <E>
+	 * @return task
+	 */
 	protected abstract <E extends Event<?>> Task<E> createTask();
+
+	/**
+	 * Try to return a fresh task instance, if null, the task structure (Queue, RingBuffer...) has no remaining capacity
+	 * @param <E>
+	 * @return task
+	 */
+	protected abstract <E extends Event<?>> Task<E> createSafeTask();
 
 	protected abstract class Task<E extends Event<?>> {
 

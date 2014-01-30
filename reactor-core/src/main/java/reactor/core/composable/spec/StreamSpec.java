@@ -19,6 +19,7 @@ import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Stream;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.event.selector.Selector;
 import reactor.tuple.Tuple2;
 
@@ -77,7 +78,7 @@ public final class StreamSpec<T> extends ComposableSpec<StreamSpec<T>, Stream<T>
 
 	@Override
 	protected Stream<T> createComposable(Environment env, Observable observable,
-	                                     Tuple2<Selector, Object> accept) {
+	                                     Tuple2<Selector, Object> accept, DispatchingAssistant dispatchingAssistant) {
 		if (values == null) {
 			throw new IllegalStateException("A bounded stream must be configured with some values. Use " +
 					DeferredStreamSpec.class.getSimpleName() + " to create a stream with no initial values");

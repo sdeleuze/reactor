@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.registry.CachingRegistry;
 import reactor.event.registry.Registration;
@@ -234,6 +235,22 @@ public class Reactor implements Observable {
 		Assert.notNull(ev, "Event cannot be null.");
 		ev.setKey(key);
 		dispatcher.dispatch(key, ev, consumerRegistry, errorHandler, eventRouter, onComplete);
+
+		return this;
+	}
+
+	@Override
+	public <E extends Event<?>> Reactor assistNotify(Object key, E ev, Consumer<E> onComplete,
+	                                                 DispatchingAssistant dispatchingAssistant) {
+		Assert.notNull(key, "Key cannot be null.");
+		Assert.notNull(ev, "Event cannot be null.");
+		ev.setKey(key);
+		try {
+			dispatcher.assistDispatch(key, ev, consumerRegistry, errorHandler, eventRouter, onComplete,
+					dispatchingAssistant.clone());
+		} catch (CloneNotSupportedException e) {
+			throw new RuntimeException(e);
+		}
 
 		return this;
 	}

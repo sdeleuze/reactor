@@ -60,6 +60,11 @@ public final class SynchronousDispatcher extends SingleThreadDispatcher {
 	}
 
 	@Override
+	protected <E extends Event<?>> Task<E> createSafeTask() {
+		return null;
+	}
+
+	@Override
 	public <E extends Event<?>> void dispatch(Object key, E event, Registry<Consumer<? extends Event<?>>>
 			consumerRegistry, Consumer<Throwable> errorConsumer, EventRouter eventRouter, Consumer<E> completionConsumer) {
 
@@ -68,5 +73,16 @@ public final class SynchronousDispatcher extends SingleThreadDispatcher {
 				(null != consumerRegistry ? consumerRegistry.select(key) : null),
 				completionConsumer,
 				errorConsumer);
+	}
+
+	@Override
+	public <E extends Event<?>> void assistDispatch(Object key, E event,
+	                                                Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                                Consumer<Throwable> errorConsumer,
+	                                                EventRouter eventRouter,
+	                                                Consumer<E> completionConsumer,
+	                                                DispatchingAssistant dispatchingAssistant) {
+
+		dispatch(key, event, consumerRegistry, errorConsumer, eventRouter, completionConsumer);
 	}
 }

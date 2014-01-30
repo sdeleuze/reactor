@@ -42,28 +42,31 @@ public abstract class SingleThreadDispatcher extends BaseLifecycleDispatcher {
 		}
 	}
 
-	@Override
 	@SuppressWarnings("unchecked")
-	public <E extends Event<?>> void dispatch(final Object key,
+	@Override
+	protected  <E extends Event<?>> void dispatch(final Object key,
 	                                          final E event,
 	                                          final Registry<Consumer<? extends Event<?>>> consumerRegistry,
 	                                          final Consumer<Throwable> errorConsumer,
 	                                          final EventRouter eventRouter,
-	                                          final Consumer<E> completionConsumer) {
+	                                          final Consumer<E> completionConsumer,
+	                                          final boolean isInContext,
+	                                          final Task<E> safeTask) {
 		if (!alive()) {
 			throw new IllegalStateException("This Dispatcher has been shutdown");
 		}
 
 		Task<E> task;
-		boolean isInContext = isInContext();
 		if (isInContext) {
-			if(delayedSequence >= backlogSize){
+			if (delayedSequence >= backlogSize) {
 				task = new SingleThreadTask<E>();
 				delayedTasks.add(task);
-			}else{
+			} else {
 				task = (Task<E>) delayedTasks.get(delayedSequence);
 			}
 			delayedSequence++;
+		} else if (null != safeTask){
+			task = safeTask;
 		} else {
 			task = createTask();
 		}
@@ -75,7 +78,7 @@ public abstract class SingleThreadDispatcher extends BaseLifecycleDispatcher {
 		task.setEventRouter(eventRouter);
 		task.setCompletionConsumer(completionConsumer);
 
-		if(!isInContext){
+		if (!isInContext) {
 			task.submit();
 		}
 

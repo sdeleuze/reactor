@@ -20,6 +20,7 @@ import reactor.core.Observable;
 import reactor.core.Reactor;
 import reactor.core.spec.support.DispatcherComponentSpec;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.event.selector.Selector;
 import reactor.tuple.Tuple2;
 
@@ -36,6 +37,21 @@ public abstract class ComposableSpec<SPEC extends ComposableSpec<SPEC, TARGET>, 
 
 	private Observable               observable;
 	private Tuple2<Selector, Object> acceptSelector;
+
+	/**
+	 * Configures the Composable to use a dispatching assistant for internal notifications.
+	 *
+	 * @param dispatchingAssistant The dispatching assistant to use when the initial {@link reactor.core.composable
+	 *                             .Composable} accepts any data.
+	 * @return {@code this}
+	 */
+	@SuppressWarnings("unchecked")
+	public SPEC dispatchingAssistant(final DispatchingAssistant dispatchingAssistant) {
+		this.dispatchingAssistant = dispatchingAssistant;
+		return (SPEC) this;
+	}
+
+	private DispatchingAssistant     dispatchingAssistant;
 
 	/**
 	 * Configures the Composable to reuse an explicit selector/key rather than the internal anonymous generated one.
@@ -67,9 +83,10 @@ public abstract class ComposableSpec<SPEC extends ComposableSpec<SPEC, TARGET>, 
 		if (observable == null) {
 			observable = new Reactor(dispatcher);
 		}
-		return createComposable(env, observable, acceptSelector);
+		return createComposable(env, observable, acceptSelector, dispatchingAssistant);
 	}
 
-	protected abstract TARGET createComposable(Environment env, Observable observable, Tuple2<Selector, Object> accept);
+	protected abstract TARGET createComposable(Environment env, Observable observable, Tuple2<Selector, Object> accept,
+	                                           DispatchingAssistant dispatchingAssistant);
 
 }

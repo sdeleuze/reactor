@@ -108,19 +108,18 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <E extends Event<?>> void dispatch(Object key,
+	protected <E extends Event<?>> void dispatch(Object key,
 	                                          E event,
 	                                          Registry<Consumer<? extends Event<?>>> consumerRegistry,
 	                                          Consumer<Throwable> errorConsumer,
 	                                          EventRouter eventRouter,
-	                                          Consumer<E> completionConsumer) {
+	                                          Consumer<E> completionConsumer, boolean isInContext, Task<E> safeTask) {
 		if (!alive()) {
 			throw new IllegalStateException("This Dispatcher has been shutdown");
 		}
 
-		boolean isInContext = isInContext();
-
-		Task<E> task = isInContext ? new ThreadPoolTask<E>() : (Task<E>)createTask();
+		Task<E> task = isInContext ? new ThreadPoolTask<E>() :
+				(safeTask == null ? (Task<E>)createTask() : (Task<E>)createSafeTask());
 
 		task.setKey(key);
 		task.setEvent(event);
@@ -136,12 +135,17 @@ public class ThreadPoolExecutorDispatcher extends BaseLifecycleDispatcher {
 		}
 	}
 
-
 	@SuppressWarnings("unchecked")
 	@Override
 	protected <E extends Event<?>> Task<E> createTask() {
 		Task<E> t = (Task<E>) readyTasks.allocate();
 		return (null != t ? t : (Task<E>) new ThreadPoolTask());
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	protected <E extends Event<?>> Task<E> createSafeTask() {
+		return (Task<E>) readyTasks.allocate();
 	}
 
 	private class ThreadPoolTask<E extends Event<?>> extends Task<E> implements Runnable {

@@ -17,6 +17,7 @@
 package reactor.core;
 
 import reactor.event.Event;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.event.registry.Registration;
 import reactor.event.selector.Selector;
 import reactor.function.Consumer;
@@ -105,6 +106,27 @@ public interface Observable {
 	 * @return {@literal this}
 	 */
 	<E extends Event<?>> Observable notify(Object key, E ev, Consumer<E> onComplete);
+
+	/**
+	 * Notify this component that an {@link Event} is ready to be processed and {@link Consumer#accept
+	 * accept} {@code onComplete} after dispatching. The {@param dispatchingAssistant} strategy will influence
+	 * distribution of the event.
+	 *
+	 * @param key
+	 * 		The key to be matched by {@link Selector Selectors}
+	 * @param ev
+	 * 		The {@literal Event}
+	 * @param onComplete
+	 * 		The callback {@link Consumer}
+	 * @param dispatchingAssistant
+	 *    The dispatching assistant {@link reactor.event.dispatch.DispatchingAssistant}
+	 * @param <E>
+	 * 		The type of the {@link Event}
+	 *
+	 * @return {@literal this}
+	 */
+	public <E extends Event<?>> Reactor assistNotify(Object key, E ev, Consumer<E> onComplete,
+	                                                 DispatchingAssistant dispatchingAssistant);
 
 	/**
 	 * Notify this component that an {@link Event} is ready to be processed.

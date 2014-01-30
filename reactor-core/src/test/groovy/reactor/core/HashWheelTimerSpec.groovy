@@ -49,14 +49,12 @@ class HashWheelTimerSpec extends Specification {
     when:
       "a task is submitted"
       timer.submit(
-          { Long now ->
-            latch.countDown()
-            elapsed = System.currentTimeMillis() - start
-            start = System.currentTimeMillis()
-            actualTimeWithinBounds = actualTimeWithinBounds && elapsed >= period && elapsed < period * 2
-          } as Consumer<Long>,
-          delay,
-          TimeUnit.MILLISECONDS
+		      { Long now ->
+			      elapsed = System.currentTimeMillis() - start
+			      latch.countDown()
+		      } as Consumer<Long>,
+		      delay,
+		      TimeUnit.MILLISECONDS
       )
 
     then:

@@ -30,6 +30,7 @@ import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.io.Buffer;
 import reactor.tcp.AbstractTcpConnection;
 import reactor.io.encoding.Codec;
@@ -148,7 +149,8 @@ public class NettyTcpConnection<IN, OUT> extends AbstractTcpConnection<IN, OUT> 
 
         if(!success) {
           Throwable t = future.cause();
-          eventsReactor.notify(t.getClass(), Event.wrap(t));
+          eventsReactor.assistNotify(t.getClass(), Event.wrap(t), null,
+		          DispatchingAssistant.NEXT_ITERATION_ASSISTANT);
           if(null != onComplete) {
             onComplete.accept(t);
           }

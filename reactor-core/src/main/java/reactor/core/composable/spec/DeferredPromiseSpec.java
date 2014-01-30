@@ -20,6 +20,7 @@ import reactor.core.Observable;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.event.selector.Selector;
 import reactor.tuple.Tuple2;
 
@@ -49,7 +50,8 @@ public final class DeferredPromiseSpec<T> extends ComposableSpec<DeferredPromise
 
 	@Override
 	protected Deferred<T, Promise<T>> createComposable(Environment env, Observable observable,
-	                                                   Tuple2<Selector, Object> accept) {
+	                                                   Tuple2<Selector, Object> accept,
+	                                                   DispatchingAssistant dispatchingAssistant) {
 		return new Deferred<T, Promise<T>>(new Promise<T>(observable, env, parent));
 	}
 }

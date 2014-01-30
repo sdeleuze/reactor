@@ -78,15 +78,7 @@ public final class ActorDispatcher implements Dispatcher {
 	                                          Consumer<Throwable> errorConsumer,
 	                                          EventRouter eventRouter,
 	                                          Consumer<E> completionConsumer) {
-
-		int hashCode = key == null ? emptyHashcode : key.hashCode();
-		Dispatcher delegate = dispatcherCache.get(hashCode);
-		if (delegate == null) {
-			delegate = delegateMapper.apply(key);
-			dispatcherCache.put(hashCode, delegate);
-		}
-
-		delegate.dispatch(
+		lookupDispatcher(key).dispatch(
 				key,
 				event,
 				consumerRegistry,
@@ -95,9 +87,44 @@ public final class ActorDispatcher implements Dispatcher {
 				completionConsumer);
 	}
 
+	private Dispatcher lookupDispatcher(Object key) {
+		int hashCode = key == null ? emptyHashcode : key.hashCode();
+		Dispatcher delegate = dispatcherCache.get(hashCode);
+		if (delegate == null) {
+			delegate = delegateMapper.apply(key);
+			dispatcherCache.put(hashCode, delegate);
+		}
+		return delegate;
+	}
+
 	@Override
 	public <E extends Event<?>> void dispatch(E event, EventRouter eventRouter, Consumer<E> consumer, Consumer<Throwable> errorConsumer) {
 		dispatch(null, event, null, errorConsumer, eventRouter, consumer);
+	}
+
+	@Override
+	public <E extends Event<?>> void assistDispatch(Object key,
+	                                                E event, Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                                Consumer<Throwable> errorConsumer,
+	                                                EventRouter eventRouter, Consumer<E> completionConsumer,
+	                                                DispatchingAssistant dispatchingAssistant) {
+		lookupDispatcher(key).assistDispatch(
+				key,
+				event,
+				consumerRegistry,
+				errorConsumer,
+				eventRouter,
+				completionConsumer,
+				dispatchingAssistant);
+	}
+
+	@Override
+	public <E extends Event<?>> void assistDispatch(E event,
+	                                                EventRouter eventRouter,
+	                                                Consumer<E> consumer,
+	                                                Consumer<Throwable> errorConsumer,
+	                                                DispatchingAssistant dispatchingAssistant) {
+		assistDispatch(null, event, null, errorConsumer, eventRouter, consumer, dispatchingAssistant);
 	}
 
 }

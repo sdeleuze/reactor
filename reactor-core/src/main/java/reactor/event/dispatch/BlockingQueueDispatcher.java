@@ -122,6 +122,12 @@ public final class BlockingQueueDispatcher extends SingleThreadDispatcher {
 		return (null != t ? t : new BlockingQueueTask());
 	}
 
+	@SuppressWarnings("unchecked")
+	@Override
+	protected <E extends Event<?>> Task<E> createSafeTask() {
+		return (Task<E>)readyTasks.allocate();
+	}
+
 	private class BlockingQueueTask<E extends Event<?>> extends SingleThreadTask<E> {
 		@Override
 		public void submit() {

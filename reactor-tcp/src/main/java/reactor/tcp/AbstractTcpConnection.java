@@ -27,6 +27,7 @@ import reactor.core.spec.Reactors;
 import reactor.core.support.NotifyConsumer;
 import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
 import reactor.event.support.EventConsumer;
@@ -163,7 +164,11 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public Promise<Void> send(OUT data) {
-		Deferred<Void, Promise<Void>> d = Promises.defer(env, eventsReactor.getDispatcher());
+		Deferred<Void, Promise<Void>> d = Promises.<Void>defer()
+				.env(env)
+				.dispatcher(eventsReactor.getDispatcher())
+				.dispatchingAssistant(DispatchingAssistant.NEXT_ITERATION_ASSISTANT)
+				.get();
 		send(data, d);
 		return d.compose();
 	}
@@ -176,7 +181,11 @@ public abstract class AbstractTcpConnection<IN, OUT> implements TcpConnection<IN
 
 	@Override
 	public Promise<IN> sendAndReceive(OUT data) {
-		final Deferred<IN, Promise<IN>> d = Promises.defer(env, eventsReactor.getDispatcher());
+		final Deferred<IN, Promise<IN>> d = Promises.<IN>defer()
+				.env(env)
+				.dispatcher(eventsReactor.getDispatcher())
+				.dispatchingAssistant(DispatchingAssistant.NEXT_ITERATION_ASSISTANT)
+				.get();
 		Selector sel = $();
 		eventsReactor.on(sel, new EventConsumer<IN>(d)).cancelAfterUse();
 		replyToKeys.add(sel.getObject());

@@ -20,6 +20,7 @@ import reactor.core.Observable;
 import reactor.core.composable.Composable;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.event.selector.Selector;
 import reactor.tuple.Tuple2;
 
@@ -77,7 +78,8 @@ public final class DeferredStreamSpec<T> extends ComposableSpec<DeferredStreamSp
 
 	@Override
 	protected Deferred<T, Stream<T>> createComposable(Environment env, Observable observable,
-	                                                  Tuple2<Selector, Object> accept) {
+	                                                  Tuple2<Selector, Object> accept,
+	                                                  DispatchingAssistant dispatchingAssistant) {
 		Stream<T> stream = new Stream<T>(observable, batchSize, values, parent, accept, env);
 		return new Deferred<T, Stream<T>>(stream);
 	}

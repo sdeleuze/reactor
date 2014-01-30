@@ -33,6 +33,7 @@ import reactor.core.composable.Deferred;
 import reactor.core.composable.Promise;
 import reactor.core.composable.spec.Promises;
 import reactor.core.spec.Reactors;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.support.NamedDaemonThreadFactory;
@@ -156,7 +157,11 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	public Promise<Void> shutdown() {
-		final Deferred<Void, Promise<Void>> d = Promises.defer(env, getReactor().getDispatcher());
+		final Deferred<Void, Promise<Void>> d = Promises.<Void>defer()
+				.env(env)
+				.dispatcher(eventsReactor.getDispatcher())
+				.dispatchingAssistant(DispatchingAssistant.NEXT_ITERATION_ASSISTANT)
+				.get();
 		Reactors.schedule(
 				new Consumer<Void>() {
 					@SuppressWarnings({"rawtypes", "unchecked"})

@@ -45,7 +45,7 @@ import javax.annotation.Nullable;
 public abstract class Composable<T> implements Pipeline<T> {
 
 	private final Selector acceptSelector;
-	private final Object acceptKey;
+	private final Object   acceptKey;
 	private final Selector error = Selectors.anonymous();
 	private final Selector flush = Selectors.anonymous();
 
@@ -62,12 +62,12 @@ public abstract class Composable<T> implements Pipeline<T> {
 		Assert.state(observable != null || parent != null, "One of 'observable' or 'parent'  cannot be null.");
 		this.parent = parent;
 		this.events = parent == null ? observable : parent.events;
-		if(null == acceptSelectorTuple){
-			this.acceptSelector =  Selectors.anonymous();
+		if (null == acceptSelectorTuple) {
+			this.acceptSelector = Selectors.anonymous();
 			this.acceptKey = acceptSelector.getObject();
-		}else{
+		} else {
 			this.acceptKey = acceptSelectorTuple.getT1();
-			this.acceptSelector =  new ObjectSelector<Object>(acceptSelectorTuple.getT2());
+			this.acceptSelector = new ObjectSelector<Object>(acceptSelectorTuple.getT2());
 		}
 
 		if (parent != null) {
@@ -190,9 +190,9 @@ public abstract class Composable<T> implements Pipeline<T> {
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@code Composable} containing the transformed values
 	 */
-	public <V,C extends Composable<V>> Composable<V> mapMany(@Nonnull final Function<T, C> fn) {
+	public <V, C extends Composable<V>> Composable<V> mapMany(@Nonnull final Function<T, C> fn) {
 		Assert.notNull(fn, "FlatMap function cannot be null.");
-		final Deferred<V,C> d = createDeferred();
+		final Deferred<V, C> d = createDeferred();
 		add(new MapManyAction<T, V, C>(
 				fn,
 				d.compose().getObservable(),
@@ -338,6 +338,7 @@ public abstract class Composable<T> implements Pipeline<T> {
 	protected Object getAcceptKey() {
 		return this.acceptKey;
 	}
+
 	/**
 	 * Get the anonymous {@link Selector} and notification key {@link Tuple2} for doing accepts.
 	 *

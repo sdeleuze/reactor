@@ -147,6 +147,20 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher {
 		return (Task<E>) t;
 	}
 
+	@SuppressWarnings("unchecked")
+	@Override
+	protected <E extends Event<?>> Task<E> createSafeTask() {
+		long l;
+		try {
+			l = ringBuffer.tryNext();
+		} catch (InsufficientCapacityException e) {
+			return null;
+		}
+		RingBufferTask<?> t = ringBuffer.get(l);
+		t.setSequenceId(l);
+		return (Task<E>) t;
+	}
+
 	private final class RingBufferTask<E extends Event<?>> extends SingleThreadTask<E> {
 		private long sequenceId;
 

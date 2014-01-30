@@ -87,6 +87,12 @@ public class NettyEventLoopDispatcher extends SingleThreadDispatcher {
 		return (null != t ? t : new NettyEventLoopTask());
 	}
 
+	@SuppressWarnings("unchecked")
+	@Override
+	protected <E extends Event<?>> Task<E> createSafeTask() {
+		return readyTasks.allocate();
+	}
+
 	private final class NettyEventLoopTask extends SingleThreadTask<Event<Object>> implements Runnable {
 		@Override
 		public void submit() {

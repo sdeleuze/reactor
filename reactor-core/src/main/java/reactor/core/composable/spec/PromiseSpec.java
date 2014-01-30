@@ -18,6 +18,7 @@ package reactor.core.composable.spec;
 import reactor.core.Environment;
 import reactor.core.Observable;
 import reactor.core.composable.Promise;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.event.selector.Selector;
 import reactor.function.Supplier;
 import reactor.tuple.Tuple2;
@@ -82,7 +83,7 @@ public final class PromiseSpec<T> extends ComposableSpec<PromiseSpec<T>, Promise
 
 	@Override
 	protected Promise<T> createComposable(Environment env, Observable observable,
-	                                      Tuple2<Selector, Object> accept) {
+	                                      Tuple2<Selector, Object> accept, DispatchingAssistant dispatchingAssistant) {
 		if (value != null) {
 			return new Promise<T>(value, observable, env);
 		} else if (valueSupplier != null) {

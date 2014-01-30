@@ -33,6 +33,7 @@ import reactor.core.composable.Promise;
 import reactor.core.composable.Stream;
 import reactor.core.composable.spec.Promises;
 import reactor.core.composable.spec.Streams;
+import reactor.event.dispatch.DispatchingAssistant;
 import reactor.function.Consumer;
 import reactor.function.Supplier;
 import reactor.io.Buffer;
@@ -155,7 +156,11 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	public Promise<TcpConnection<IN, OUT>> open() {
 		final Deferred<TcpConnection<IN, OUT>, Promise<TcpConnection<IN, OUT>>> connection
-				= Promises.defer(env, eventsReactor.getDispatcher());
+				= Promises.<TcpConnection<IN, OUT>>defer()
+				.env(env)
+				.dispatcher(eventsReactor.getDispatcher())
+				.dispatchingAssistant(DispatchingAssistant.NEXT_ITERATION_ASSISTANT)
+				.get();
 
 		createConnection(createConnectListener(connection));
 

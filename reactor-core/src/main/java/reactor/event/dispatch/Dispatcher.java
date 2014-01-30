@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  */
 public interface Dispatcher {
 
@@ -100,4 +101,46 @@ public interface Dispatcher {
 																		 Consumer<E> consumer,
 																		 Consumer<Throwable> errorConsumer);
 
+	/**
+	 * Instruct the {@code Dispatcher} to dispatch the {@code event} that has the given {@param key} providing a
+	 * specific dispatching strategy {@param dispatchingAssistant}. The {@link Consumer}s
+	 * that will receive the event are selected from the {@param consumerRegistry}, and the event is routed to them using
+	 * the {@code eventRouter}. In the event of an error during dispatching, the {@param errorConsumer} will be called. In
+	 * the event of successful dispatching, the {@param completionConsumer} will be called.
+	 *
+	 * @param key                The key associated with the event
+	 * @param event              The event
+	 * @param consumerRegistry   The registry from which consumer's are selected
+	 * @param errorConsumer      The consumer that is invoked if dispatch fails. May be {@code null}
+	 * @param eventRouter        Used to route the event to the selected consumers
+	 * @param completionConsumer The consumer that is driven if dispatch succeeds May be {@code null}
+	 * @param dispatchingAssistant The dispatching assistant that will give hints on dispatching strategy
+	 * @param <E>                type of the event
+	 * @throws IllegalStateException If the {@code Dispatcher} is not {@link Dispatcher#alive() alive}
+	 */
+	<E extends Event<?>> void assistDispatch(Object key,
+	                                   E event,
+	                                   Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	                                   Consumer<Throwable> errorConsumer,
+	                                   EventRouter eventRouter,
+	                                   Consumer<E> completionConsumer,
+	                                   DispatchingAssistant dispatchingAssistant);
+
+	/**
+	 * Instruct the {@code Dispatcher} to dispatch the given {@link Event} using the given {@link Consumer}. This
+	 * optimized route bypasses all selection and routing so provides a significant throughput boost. If an error
+	 * occurs, the given {@param errorConsumer} will be invoked.
+	 *
+	 * @param event         the event
+	 * @param eventRouter   invokes the {@code Consumer} in the correct thread
+	 * @param errorConsumer consumer to invoke if dispatch fails (may be {@code null})
+	 * @param dispatchingAssistant The dispatching assistant that will give hints on dispatching strategy
+	 * @param <E>           type of the event
+	 * @throws IllegalStateException If the {@code Dispatcher} is not {@link Dispatcher#alive() alive}
+	 */
+	<E extends Event<?>> void assistDispatch(E event,
+	                                   EventRouter eventRouter,
+	                                   Consumer<E> consumer,
+	                                   Consumer<Throwable> errorConsumer,
+	                                   DispatchingAssistant dispatchingAssistant);
 }
