@@ -20,8 +20,9 @@ package reactor.core.action;
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
+ * @since 1.1
  */
-public interface Pipeline<T> {
+public interface Pipeline<T> extends Flushable<T>{
 
 	/**
 	 * Consume events with the passed {@code Action}
@@ -30,7 +31,5 @@ public interface Pipeline<T> {
 	 * 		the action listening for values
 	 */
 	Pipeline<T> add(Action<T> action);
-
-	Pipeline<T> flush();
 
 }

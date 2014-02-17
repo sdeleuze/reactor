@@ -21,15 +21,21 @@ import reactor.function.Predicate;
 
 /**
  * @author Stephane Maldini
+ * @since 1.1
  */
 public class FilterAction<T> extends Action<T> {
+
+	public static final Predicate<Boolean> simplePredicate = new Predicate<Boolean>() {
+		@Override
+		public boolean test(Boolean aBoolean) {
+			return aBoolean;
+		}
+	};
+
 	private final Predicate<T> p;
 	private final Observable   elseObservable;
-	private final Object       elseSuccess;
 
-	public FilterAction(Predicate<T> p, Observable d, Object successKey, Object failureKey) {
-		this(p, d, successKey, failureKey, null, null);
-	}
+	private final Object       elseSuccess;
 
 	public FilterAction(Predicate<T> p, Observable d, Object successKey, Object failureKey,
 	                    Observable elseObservable, Object elseSuccess
@@ -43,10 +49,10 @@ public class FilterAction<T> extends Action<T> {
 	@Override
 	public void doAccept(Event<T> value) {
 		boolean b = p.test(value.getData());
-		if(b) {
+		if (b) {
 			notifyValue(value);
 		} else {
-			if(null != elseObservable) {
+			if (null != elseObservable) {
 				elseObservable.notify(elseSuccess, value);
 			}
 			// GH-154: Verbose error level logging of every event filtered out by a Stream filter

@@ -16,8 +16,11 @@
 
 package reactor.tuple;
 
+import reactor.util.ObjectUtils;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -26,12 +29,15 @@ import java.util.Iterator;
  * A {@literal Tuple} is an immutable {@link Collection} of objects, each of which can be of an arbitrary type.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @SuppressWarnings({"rawtypes"})
-public class Tuple implements Iterable {
+public class Tuple implements Iterable, Serializable {
+
+	private static final long serialVersionUID = 8777121214502020842L;
 
 	protected final Object[] entries;
-	protected final int      size;
+	protected final int size;
 
 	/**
 	 * Creates a new {@code Tuple} that holds the given {@code values}.
@@ -264,11 +270,11 @@ public class Tuple implements Iterable {
     if (this.size == 0) {
       return 0;
     } else if (this.size == 1) {
-      return this.entries[0].hashCode();
+      return ObjectUtils.nullSafeHashCode(this.entries[0]);
     } else {
       int hashCode = 1;
       for (Object entry: this.entries) {
-        hashCode = hashCode ^ entry.hashCode();
+        hashCode = hashCode ^ ObjectUtils.nullSafeHashCode(entry);
       }
       return hashCode;
     }
@@ -287,7 +293,7 @@ public class Tuple implements Iterable {
     boolean eq = true;
 
     for (int i = 0; i < this.size; i++) {
-      if (!this.entries[i].equals(cast.entries[i])) {
+      if (null != this.entries[i] && !this.entries[i].equals(cast.entries[i])) {
         return false;
       }
     }

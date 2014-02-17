@@ -22,6 +22,7 @@ import reactor.function.Function;
 /**
  * @author Stephane Maldini
  * @author Jon Brisbin
+ * @since 1.1
  */
 public class MapManyAction<T, V, E extends Pipeline<V>> extends Action<T> {
 

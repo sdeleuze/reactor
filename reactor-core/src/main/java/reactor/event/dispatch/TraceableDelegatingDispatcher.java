@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
  * An implementation of {@link reactor.event.dispatch.Dispatcher} that traces activity through it.
  *
  * @author Jon Brisbin
- * @author Stephane Maldini
  */
 public class TraceableDelegatingDispatcher implements Dispatcher {
 
@@ -34,7 +33,7 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 
 	@Override
 	public boolean awaitAndShutdown() {
-		if (log.isTraceEnabled()) {
+		if(log.isTraceEnabled()) {
 			log.trace("awaitAndShutdown()");
 		}
 		return delegate.awaitAndShutdown();
@@ -42,7 +41,7 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
-		if (log.isTraceEnabled()) {
+		if(log.isTraceEnabled()) {
 			log.trace("awaitAndShutdown({}, {})", timeout, timeUnit);
 		}
 		return delegate.awaitAndShutdown(timeout, timeUnit);
@@ -50,7 +49,7 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 
 	@Override
 	public void shutdown() {
-		if (log.isTraceEnabled()) {
+		if(log.isTraceEnabled()) {
 			log.trace("shutdown()");
 		}
 		delegate.shutdown();
@@ -58,7 +57,7 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 
 	@Override
 	public void halt() {
-		if (log.isTraceEnabled()) {
+		if(log.isTraceEnabled()) {
 			log.trace("halt()");
 		}
 		delegate.halt();
@@ -71,14 +70,14 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 	                                          Consumer<Throwable> errorConsumer,
 	                                          EventRouter eventRouter,
 	                                          Consumer<E> completionConsumer) {
-		if (log.isTraceEnabled()) {
+		if(log.isTraceEnabled()) {
 			log.trace("dispatch({}, {}, {}, {}, {}, {})",
-					key,
-					event,
-					consumerRegistry,
-					errorConsumer,
-					eventRouter,
-					completionConsumer);
+			          key,
+			          event,
+			          consumerRegistry,
+			          errorConsumer,
+			          eventRouter,
+			          completionConsumer);
 		}
 		delegate.dispatch(key, event, consumerRegistry, errorConsumer, eventRouter, completionConsumer);
 	}
@@ -88,46 +87,15 @@ public class TraceableDelegatingDispatcher implements Dispatcher {
 	                                          EventRouter eventRouter,
 	                                          Consumer<E> consumer,
 	                                          Consumer<Throwable> errorConsumer) {
-		if (log.isTraceEnabled()) {
+		if(log.isTraceEnabled()) {
 			log.trace("dispatch({}, {}, {}, {})", event, eventRouter, consumer, errorConsumer);
 		}
 		delegate.dispatch(event, eventRouter, consumer, errorConsumer);
 	}
 
 	@Override
-	public <E extends Event<?>> void assistDispatch(Object key,
-	                                                E event,
-	                                                Registry<Consumer<? extends Event<?>>> consumerRegistry,
-	                                                Consumer<Throwable> errorConsumer,
-	                                                EventRouter eventRouter,
-	                                                Consumer<E> completionConsumer,
-	                                                DispatchingAssistant dispatchingAssistant) {
-		if (log.isTraceEnabled()) {
-			log.trace("assistDispatch({}, {}, {}, {}, {}, {}, {})",
-					key,
-					event,
-					consumerRegistry,
-					errorConsumer,
-					eventRouter,
-					completionConsumer,
-					dispatchingAssistant);
-		}
-		delegate.assistDispatch(key, event, consumerRegistry, errorConsumer, eventRouter, completionConsumer,
-				dispatchingAssistant);
-	}
-
-	@Override
-	public <E extends Event<?>> void assistDispatch(E event,
-	                                                EventRouter eventRouter,
-	                                                Consumer<E> consumer,
-	                                                Consumer<Throwable> errorConsumer,
-	                                                DispatchingAssistant dispatchingAssistant) {
-
-		if (log.isTraceEnabled()) {
-			log.trace("assistDispatch({}, {}, {}, {}, {})", event, eventRouter, consumer, errorConsumer,
-					dispatchingAssistant);
-		}
-		delegate.assistDispatch(event, eventRouter, consumer, errorConsumer, dispatchingAssistant);
+	public void execute(Runnable command) {
+		delegate.execute(command);
 	}
 
 }

@@ -23,13 +23,15 @@ import java.util.List;
 
 /**
  * @author Stephane Maldini
+ * @since 1.1
  */
-public class CollectAction<T> extends BatchAction<T> {
+public class CollectAction<T> extends BatchAction<T> implements Flushable<T> {
 
-	private final List<T> values = new ArrayList<T>();
+	private final List<T> values;
 
 	public CollectAction(int batchsize, Observable d, Object successKey, Object failureKey) {
 		super(batchsize, d, successKey, failureKey);
+		values = new ArrayList<T>(batchsize > 0 ? batchsize : 256);
 	}
 
 	@Override
@@ -42,8 +44,14 @@ public class CollectAction<T> extends BatchAction<T> {
 		if (values.isEmpty()) {
 			return;
 		}
-		notifyValue(ev.copy(new ArrayList<T>(values)));
+		notifyValue(Event.wrap(new ArrayList<T>(values)));
 		values.clear();
+	}
+
+	@Override
+	public Flushable<T> flush() {
+		doFlush(null);
+		return this;
 	}
 
 }

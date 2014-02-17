@@ -36,12 +36,12 @@ import reactor.core.spec.Reactors;
 import reactor.event.dispatch.DispatchingAssistant;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
+import reactor.io.encoding.Codec;
 import reactor.support.NamedDaemonThreadFactory;
 import reactor.tcp.TcpConnection;
 import reactor.tcp.TcpServer;
 import reactor.tcp.config.ServerSocketOptions;
 import reactor.tcp.config.SslOptions;
-import reactor.io.encoding.Codec;
 import reactor.tcp.ssl.SSLEngineSupplier;
 import reactor.util.Assert;
 
@@ -72,12 +72,12 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private final EventLoopGroup      ioGroup;
 
 	protected NettyTcpServer(Environment env,
-													 Reactor reactor,
-													 InetSocketAddress listenAddress,
-													 final ServerSocketOptions opts,
-													 final SslOptions sslOpts,
-													 Codec<Buffer, IN, OUT> codec,
-													 Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
+	                         Reactor reactor,
+	                         InetSocketAddress listenAddress,
+	                         final ServerSocketOptions opts,
+	                         final SslOptions sslOpts,
+	                         Codec<Buffer, IN, OUT> codec,
+	                         Collection<Consumer<TcpConnection<IN, OUT>>> connectionConsumers) {
 		super(env, reactor, listenAddress, opts, sslOpts, codec, connectionConsumers);
 		this.eventsReactor = reactor;
 		this.listenAddress = listenAddress;
@@ -85,7 +85,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		this.options = opts;
 
 		int selectThreadCount = env.getProperty("reactor.tcp.selectThreadCount", Integer.class,
-																						Environment.PROCESSORS / 2);
+		                                        Environment.PROCESSORS / 2);
 		int ioThreadCount = env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment.PROCESSORS);
 		selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
 		ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
@@ -117,7 +117,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 							SSLEngine ssl = new SSLEngineSupplier(sslOpts, false).get();
 							if(log.isDebugEnabled()) {
 								log.debug("SSL enabled using keystore {}",
-													(null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
+								          (null != sslOpts.keystoreFile() ? sslOpts.keystoreFile() : "<DEFAULT>"));
 							}
 							ch.pipeline().addLast(new SslHandler(ssl));
 						}
