@@ -274,7 +274,7 @@ public class Reactor implements Observable {
 		Assert.notNull(ev, "Event cannot be null.");
 		ev.setKey(key);
 		try {
-			dispatcher.assistDispatch(key, ev, consumerRegistry, errorHandler, eventRouter, onComplete,
+			dispatcher.assistDispatch(key, ev, consumerRegistry, dispatchErrorHandler, eventRouter, onComplete,
 					dispatchingAssistant.clone());
 		} catch (CloneNotSupportedException e) {
 			throw new RuntimeException(e);

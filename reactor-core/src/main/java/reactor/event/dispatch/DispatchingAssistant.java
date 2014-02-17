@@ -15,10 +15,10 @@
  */
 package reactor.event.dispatch;
 
-import reactor.core.HashWheelTimer;
 import reactor.core.Observable;
 import reactor.event.Event;
 import reactor.function.Consumer;
+import reactor.timer.Timer;
 
 /**
  * A {@code DispatchingAssistant} is used to provide hints to the underlying dispatching logic. Dispatching might
@@ -55,8 +55,8 @@ public class DispatchingAssistant implements Cloneable{
 	 */
 	public final static DispatchingAssistant NEXT_ITERATION_ASSISTANT = new DispatchingAssistant(NEXT_ITERATION);
 
-	final private byte           dispatchingOptions;
-	final private HashWheelTimer timer;
+	final private byte  dispatchingOptions;
+	final private Timer timer;
 
 	private Dispatcher dispatcher;
 
@@ -68,7 +68,7 @@ public class DispatchingAssistant implements Cloneable{
 		this(dispatchingOptions, null);
 	}
 
-	public DispatchingAssistant(byte dispatchingOptions, HashWheelTimer timer) {
+	public DispatchingAssistant(byte dispatchingOptions, Timer timer) {
 		this.dispatchingOptions = dispatchingOptions;
 		this.timer = timer;
 	}
@@ -102,7 +102,7 @@ public class DispatchingAssistant implements Cloneable{
 		this.dispatcher = dispatcher;
 	}
 
-	final protected HashWheelTimer timer() {
+	final protected Timer timer() {
 		return timer;
 	}
 
@@ -116,6 +116,6 @@ public class DispatchingAssistant implements Cloneable{
 
 	@Override
 	public DispatchingAssistant clone() throws CloneNotSupportedException {
-		return (DispatchingAssistant)super.clone();
+		return (DispatchingAssistant) super.clone();
 	}
 }
