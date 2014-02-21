@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class TraceableDelegatingFilter implements Filter {
 
@@ -22,11 +23,11 @@ public class TraceableDelegatingFilter implements Filter {
 	}
 
 	@Override
-	public <T> List<T> filter(List<T> items, Object key) {
+	public <T> Iterable<T> filter(Iterable<T> items, Object key) {
 		if(log.isTraceEnabled()) {
 			log.trace("filtering {} using key {}", items, key);
 		}
-		List<T> l = delegate.filter(items, key);
+		Iterable<T> l = delegate.filter(items, key);
 		if(log.isTraceEnabled()) {
 			log.trace("items {} matched key {}", (null == items ? Collections.emptyList() : items), key);
 		}

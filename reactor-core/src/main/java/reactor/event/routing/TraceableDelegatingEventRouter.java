@@ -3,6 +3,7 @@ package reactor.event.routing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.event.Event;
+import reactor.event.registry.LinkedRegistrations;
 import reactor.event.registry.Registration;
 import reactor.function.Consumer;
 import reactor.util.Assert;
@@ -11,6 +12,7 @@ import java.util.List;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class TraceableDelegatingEventRouter implements EventRouter {
 
@@ -26,12 +28,13 @@ public class TraceableDelegatingEventRouter implements EventRouter {
 	@Override
 	public void route(Object key,
 	                  Event<?> event,
-	                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+	                  LinkedRegistrations<Consumer<? extends Event<?>>> consumers,
 	                  Consumer<?> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
 		if(log.isTraceEnabled()) {
 			log.trace("route({}, {}, {}, {}, {})", key, event, consumers, completionConsumer, errorConsumer);
 		}
+		delegate.route(key, event, consumers, completionConsumer, errorConsumer);
 	}
 
 }

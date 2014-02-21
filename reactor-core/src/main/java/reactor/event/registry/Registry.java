@@ -19,6 +19,7 @@ package reactor.event.registry;
 import java.util.List;
 
 import reactor.event.selector.Selector;
+import reactor.function.Consumer;
 
 /**
  * Implementations of this interface manage a registry of objects that works sort of like a Map, except Registries don't
@@ -46,6 +47,7 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * {@literal key}. There's no provision for removing only a specific object.
 	 *
 	 * @param key The key to be matched by the Selectors
+	 *
 	 * @return {@literal true} if any objects were unassigned, {@literal false} otherwise.
 	 */
 	boolean unregister(Object key);
@@ -54,9 +56,12 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * Select {@link Registration}s whose {@link Selector} {@link Selector#matches(Object)} the given {@code key}.
 	 *
 	 * @param key The key for the Selectors to match
-	 * @return A {@link List} of {@link Registration}s whose {@link Selector} matches the given key.
+	 *
+	 * @return A {@link LinkedRegistrations} that accepts a callback {@link Consumer} to run logic for each
+	 * {@link Registration}s whose {@link Selector} matches the given key. A null argument signals the callback that no
+	 * more registrations are available to consume (end).
 	 */
-	List<Registration<? extends T>> select(Object key);
+	LinkedRegistrations<T> select(Object key);
 
 	/**
 	 * Clear the {@link Registry}, resetting its state and calling {@link Registration#cancel()} for any active {@link

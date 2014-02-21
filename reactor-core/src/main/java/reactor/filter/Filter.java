@@ -23,6 +23,7 @@ import java.util.List;
  * implementation.
  *
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  *
  */
 public interface Filter {
@@ -38,6 +39,6 @@ public interface Filter {
 	 *
 	 * @throws IllegalArgumentException if {@code items} is null
 	 */
-	<T> List<T> filter(List<T> items, Object key);
+	<T> Iterable<T> filter(Iterable<T> items, Object key);
 
 }

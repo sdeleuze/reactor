@@ -17,6 +17,7 @@
 package reactor.filter;
 
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -28,11 +29,13 @@ import java.util.List;
 public final class FirstFilter extends AbstractFilter {
 
 	@Override
-	public <T> List<T> doFilter(List<T> items, Object key) {
-		if (items.isEmpty()) {
+	public <T> Iterable<T> doFilter(Iterable<T> items, Object key) {
+		Iterator<T> iterator = items.iterator();
+		T next = iterator.next();
+		if (!iterator.hasNext()) {
 			return items;
 		} else {
-			return Collections.singletonList(items.get(0));
+			return Collections.singletonList(next);
 		}
 	}
 }

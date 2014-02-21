@@ -16,14 +16,13 @@
 
 package reactor.filter;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 /**
  * A {@link Filter} implementation that returns a single, randomly selected item.
  *
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  *
  */
 public final class RandomFilter extends AbstractFilter {
@@ -31,11 +30,16 @@ public final class RandomFilter extends AbstractFilter {
 	private final Random random = new Random();
 
 	@Override
-	public <T> List<T> doFilter(List<T> items, Object key) {
-		if (items.isEmpty()) {
+	public <T> Iterable<T> doFilter(Iterable<T> items, Object key) {
+		Iterator<T> iterator = items.iterator();
+		if (!iterator.hasNext()) {
 			return items;
 		} else {
-			return Collections.singletonList(items.get(random.nextInt(items.size())));
+			List<T> buffer = new ArrayList<T>();
+			while(iterator.hasNext()){
+				buffer.add(iterator.next());
+			}
+			return Collections.singletonList(buffer.get(random.nextInt(buffer.size())));
 		}
 	}
 }

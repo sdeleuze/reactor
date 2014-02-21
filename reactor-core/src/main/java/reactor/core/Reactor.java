@@ -22,6 +22,7 @@ import reactor.event.Event;
 import reactor.event.dispatch.Dispatcher;
 import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.event.registry.CachingRegistry;
+import reactor.event.registry.LinkedRegistrations;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.routing.ArgumentConvertingConsumerInvoker;
@@ -329,13 +330,12 @@ public class Reactor implements Observable {
 	@Override
 	public <T> Consumer<Event<T>> prepare(final Object key) {
 		return new Consumer<Event<T>>() {
-			final List<Registration<? extends Consumer<? extends Event<?>>>> regs = consumerRegistry.select(key);
-			final int size = regs.size();
+			LinkedRegistrations<Consumer<? extends Event<?>>> regs = consumerRegistry.select(key);
 
 			@Override
 			public void accept(Event<T> ev) {
-				for(int i = 0; i < size; i++) {
-					Registration<Consumer<Event<?>>> reg = (Registration<Consumer<Event<?>>>)regs.get(i);
+				for (Registration<? extends Consumer<? extends Event<?>>> registration : regs) {
+					Registration<Consumer<Event<?>>> reg = (Registration<Consumer<Event<?>>>)registration;
 					dispatcher.dispatch(ev.setKey(key), eventRouter, reg.getObject(), dispatchErrorHandler);
 				}
 			}
@@ -362,13 +362,13 @@ public class Reactor implements Observable {
 			final Consumer<Event<Iterable<Event<T>>>> batchConsumer = new Consumer<Event<Iterable<Event<T>>>>() {
 				@Override
 				public void accept(Event<Iterable<Event<T>>> event) {
-					List<Registration<? extends Consumer<? extends Event<?>>>> regs = consumerRegistry.select(key);
+					LinkedRegistrations<Consumer<? extends Event<?>>> regs = consumerRegistry.select(key);
 					for (Event<T> batchedEvent : event.getData()) {
 						for (Registration<? extends Consumer<? extends Event<?>>> registration : regs) {
 							eventRouter.route(null, batchedEvent, null, registration.getObject(), dispatchErrorHandler);
 						}
 					}
-					if(completeConsumer != null){
+					if (completeConsumer != null) {
 						completeConsumer.accept(null);
 					}
 				}
@@ -443,7 +443,7 @@ public class Reactor implements Observable {
 				V reply = fn.apply(ev);
 
 				Event<?> replyEv;
-				if(null == reply) {
+				if (null == reply) {
 					replyEv = new Event<Void>(Void.class);
 				} else {
 					replyEv = (Event.class.isAssignableFrom(reply.getClass()) ? (Event<?>) reply : Event.wrap(reply));

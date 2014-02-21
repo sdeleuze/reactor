@@ -254,11 +254,11 @@ public class Environment implements Iterable<Map.Entry<String, List<Dispatcher>>
 	public Dispatcher getDispatcher(String name) {
 		synchronized(monitor) {
 			List<Dispatcher> dispatchers = this.dispatchers.get(name);
-			List<Dispatcher> filteredDispatchers = this.dispatcherFilter.filter(dispatchers, name);
-			if(filteredDispatchers.isEmpty()) {
+			Iterator<Dispatcher> filteredDispatchers = this.dispatcherFilter.filter(dispatchers, name).iterator();
+			if(!filteredDispatchers.hasNext()) {
 				throw new IllegalArgumentException("No Dispatcher found for name '" + name + "'");
 			} else {
-				return filteredDispatchers.get(0);
+				return filteredDispatchers.next();
 			}
 		}
 	}

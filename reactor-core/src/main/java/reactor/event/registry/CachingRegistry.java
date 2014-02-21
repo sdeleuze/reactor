@@ -16,15 +16,17 @@
 
 package reactor.event.registry;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.event.lifecycle.Pausable;
 import reactor.event.selector.ObjectSelector;
 import reactor.event.selector.Selector;
 import reactor.event.selector.Selectors;
+import reactor.function.Consumer;
 
-import java.util.*;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -46,62 +48,56 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class CachingRegistry<T> implements Registry<T> {
 
-	private static final Logger                                     LOG                 = LoggerFactory.getLogger(
-			CachingRegistry
-					.class);
-	private static final Selector                                   NO_MATCH            = new ObjectSelector<Void>(
+	private static final Selector NO_MATCH = new ObjectSelector<Void>(
 			null) {
 		@Override
 		public boolean matches(Object key) {
 			return false;
 		}
 	};
-	private static final AtomicIntegerFieldUpdater<CachingRegistry> sizeExponentUpdater = AtomicIntegerFieldUpdater
-			.newUpdater(CachingRegistry.class, "sizeExp");
-	private static final AtomicIntegerFieldUpdater<CachingRegistry> nextAvailUpdater    = AtomicIntegerFieldUpdater
-			.newUpdater(CachingRegistry.class, "nextAvail");
 
-	@SuppressWarnings("unchecked")
-	private final Registration<? extends T>[] empty = new Registration[0];
+	private final LinkedRegistrations<T>               EMPTY          = new LinkedRegistrations<T>(null);
+	private final ReentrantLock                        cacheLock      = new ReentrantLock();
+	private final ReentrantLock                        primeCacheLock = new ReentrantLock();
+	private final ReentrantLock                        regLock        = new ReentrantLock();
+	private final Map<Integer, LinkedRegistrations<T>> cache          = new HashMap<Integer,
+			LinkedRegistrations<T>>();
+	private final Map<Integer, LinkedRegistrations<T>> primeCache     = new HashMap<Integer,
+			LinkedRegistrations<T>>();
 
-	private final ReentrantLock                             cacheLock      = new ReentrantLock();
-	private final ReentrantLock                             primeCacheLock = new ReentrantLock();
-	private final ReentrantLock                             regLock        = new ReentrantLock();
-	private final Map<Integer, Registration<? extends T>[]> cache          = new HashMap<Integer,
-			Registration<? extends T>[]>();
-	private final Map<Integer, Registration<? extends T>[]> primeCache     = new HashMap<Integer,
-			Registration<? extends T>[]>();
+	private volatile LinkedRegistrations<T> registrations;
 
-	@SuppressWarnings("unused")
-	private volatile int sizeExp = 5;
-
-	private volatile int nextAvail = 0;
-
-	private volatile Registration<? extends T>[] registrations;
-
-	@SuppressWarnings("unchecked")
-	public CachingRegistry() {
-		this.registrations = new Registration[32];
+	public CachingRegistry(LinkedRegistrations<T> registrations) {
+		this.registrations = registrations;
 	}
 
-	@SuppressWarnings("unchecked")
+	public CachingRegistry() {
+		this(null);
+	}
+
 	@Override
 	public <V extends T> Registration<V> register(Selector sel, V obj) {
-		int nextIdx = nextAvailUpdater.getAndIncrement(this);
-		Registration<? extends T> reg = registrations[nextIdx] = new SimpleRegistration<V>(sel, obj);
+		Registration<V> reg = new SimpleRegistration<V>(sel, obj);
+
+		regLock.lock();
+		try {
+			registrations = registrations == null ? new LinkedRegistrations<T>(reg) : registrations.append(reg);
+		} finally {
+			regLock.unlock();
+		}
 
 		// prime cache for anonymous Objects, Strings, etc...in an ObjectSelector
 		if (Object.class.equals(sel.getObject().getClass()) || Selectors.AnonymousKey.class.equals(sel.getObject().getClass())) {
 			int hashCode = sel.getObject().hashCode();
 			primeCacheLock.lock();
 			try {
-				Registration<? extends T>[] regs = primeCache.get(hashCode);
-				if (null == regs) {
-					regs = new Registration[]{reg};
+				LinkedRegistrations<T> node = primeCache.get(hashCode);
+				if (null == node) {
+					node = new LinkedRegistrations<T>(reg);
 				} else {
-					regs = addToArray(reg, regs);
+					node = node.append(reg);
 				}
-				primeCache.put(hashCode, regs);
+				primeCache.put(hashCode, node);
 			} finally {
 				primeCacheLock.unlock();
 			}
@@ -114,17 +110,7 @@ public class CachingRegistry<T> implements Registry<T> {
 			}
 		}
 
-
-		if (nextIdx > registrations.length * .75) {
-			regLock.lock();
-			try {
-				growRegistrationArray();
-			} finally {
-				regLock.unlock();
-			}
-		}
-
-		return (Registration<V>) reg;
+		return reg;
 	}
 
 	@Override
@@ -134,24 +120,32 @@ public class CachingRegistry<T> implements Registry<T> {
 			if (key.getClass().equals(Object.class)) {
 				primeCacheLock.lock();
 				try {
-					Registration<? extends T>[] registrations = primeCache.remove(key.hashCode());
-					for (Registration<? extends T> reg : registrations) {
-						reg.cancel();
-					}
+					LinkedRegistrations<T> registrations = primeCache.remove(key.hashCode());
+					registrations.accept(new Consumer<Registration<? extends T>>() {
+						@Override
+						public void accept(Registration<? extends T> reg) {
+							reg.cancel();
+						}
+					});
 					return registrations != null;
 				} finally {
 					primeCacheLock.unlock();
 				}
 			} else {
-				boolean updated = false;
 				cacheLock.lock();
 				try {
-					for (Registration<? extends T> reg : select(key)) {
-						reg.cancel();
-						updated = true;
-					}
+					final AtomicBoolean updated = new AtomicBoolean();
+					select(key).accept(new Consumer<Registration<? extends T>>() {
+						@Override
+						public void accept(Registration<? extends T> registration) {
+							if (registration != null) {
+								registration.cancel();
+								updated.set(true);
+							}
+						}
+					});
 					cache.remove(key.hashCode());
-					return updated;
+					return updated.get();
 				} finally {
 					cacheLock.unlock();
 				}
@@ -161,14 +155,14 @@ public class CachingRegistry<T> implements Registry<T> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+
 	@Override
-	public List<Registration<? extends T>> select(Object key) {
-		if (null == key) {
-			return Collections.emptyList();
+	public LinkedRegistrations<T> select(final Object key) {
+		if (null == key || registrations == null) {
+			return EMPTY;
 		}
-		int hashCode = key.hashCode();
-		Registration<? extends T>[] regs;
+		final int hashCode = key.hashCode();
+		LinkedRegistrations<T> regs;
 		//Todo do we need to match generic Objects too ?
 		if (key.getClass().equals(Selectors.AnonymousKey.class) || key.getClass().equals(Object.class)) {
 			primeCacheLock.lock();
@@ -178,14 +172,9 @@ public class CachingRegistry<T> implements Registry<T> {
 				primeCacheLock.unlock();
 			}
 			if (null != regs) {
-				if (regs == empty) {
-					return Collections.emptyList();
-				} else {
-					return Arrays.asList(regs);
-				}
+				return regs;
 			} else {
-				primeCache.put(hashCode, empty);
-				return Collections.emptyList();
+				return EMPTY;
 			}
 		}
 
@@ -193,50 +182,36 @@ public class CachingRegistry<T> implements Registry<T> {
 		try {
 			regs = cache.get(hashCode);
 			if (null != regs) {
-				if (regs == empty) {
-					return Collections.emptyList();
-				} else {
-					return Arrays.asList(regs);
-				}
+				return regs;
 			}
 
 			// cache miss
 			cacheMiss(key);
-			regs = new Registration[1];
-			int found = 0;
-			for (int i = 0; i < nextAvail; i++) {
-				Registration<? extends T> reg = registrations[i];
-				if (null == reg) {
-					break;
+
+			final AtomicReference<LinkedRegistrations<T>> refRegs = new AtomicReference<LinkedRegistrations<T>>(
+					null
+			);
+
+			registrations.accept(new Consumer<Registration<? extends T>>() {
+				LinkedRegistrations<T> regs = refRegs.get();
+
+				@Override
+				public void accept(Registration<? extends T> reg) {
+					if (reg == null) {
+						cache.put(hashCode, regs);
+						refRegs.set(regs);
+					} else if (!reg.isCancelled() && !reg.isPaused() && reg.getSelector().matches(key)) {
+						regs =  regs == null ? new LinkedRegistrations<T>(reg) : regs.append(reg);
+					}
 				}
-				if (!reg.isCancelled() && !reg.isPaused() && reg.getSelector().matches(key)) {
-					regs = addToArray(reg, regs);
-					found++;
-				}
-			}
-			if (found > 0) {
-				cache.put(hashCode, regs);
-			}
+			});
+
+			regs = refRegs.get();
+
 		} finally {
 			cacheLock.unlock();
 		}
-
-		regs = cache.get(hashCode);
-		if (null == regs) {
-			// none found
-			if (LOG.isTraceEnabled()) {
-				LOG.trace("No Registrations found that match " + key);
-			}
-			regs = empty;
-			cacheLock.lock();
-			try {
-				cache.put(hashCode, regs);
-			} finally {
-				cacheLock.unlock();
-			}
-			return Collections.emptyList();
-		}
-		return Arrays.asList(regs);
+		return regs;
 	}
 
 	@Override
@@ -259,51 +234,16 @@ public class CachingRegistry<T> implements Registry<T> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public Iterator<Registration<? extends T>> iterator() {
-		return Arrays.asList(registrations).iterator();
+		return registrations.iterator();
 	}
 
 	protected void cacheMiss(Object key) {
 	}
 
-	@SuppressWarnings("unchecked")
-	private Registration<? extends T>[] addToArray(Registration<? extends T> reg,
-	                                               Registration<? extends T>[] regs) {
-		int len = regs.length;
-		for (int i = 0; i < len; i++) {
-			if (null == regs[i]) {
-				regs[i] = reg;
-				return regs;
-			}
-		}
 
-		// no empty slots, grow the array
-		Registration<? extends T>[] newRegs = Arrays.copyOf(regs, len + 1);
-		newRegs[len] = reg;
-
-		return newRegs;
-	}
-
-	@SuppressWarnings("unchecked")
-	private void growRegistrationArray() {
-		int newSize = (int) Math.pow(2, sizeExponentUpdater.getAndIncrement(this));
-		Registration<? extends T>[] newRegistrations = new Registration[newSize];
-		int i = 0;
-		for (Registration<? extends T> reg : registrations) {
-			if (null == reg) {
-				break;
-			}
-			if (!reg.isCancelled()) {
-				newRegistrations[i++] = reg;
-			}
-		}
-		registrations = newRegistrations;
-		nextAvailUpdater.set(this, i);
-	}
-
-	private class SimpleRegistration<T> implements Registration<T> {
+	private static class SimpleRegistration<T> implements Registration<T> {
 		private final Selector selector;
 		private final T        object;
 		private final boolean  lifecycle;

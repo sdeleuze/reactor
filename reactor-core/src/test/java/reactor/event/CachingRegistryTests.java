@@ -18,6 +18,7 @@ package reactor.event;
 
 import org.junit.Test;
 import reactor.event.registry.CachingRegistry;
+import reactor.event.registry.LinkedRegistrations;
 import reactor.event.registry.Registration;
 import reactor.event.registry.Registry;
 import reactor.event.selector.ObjectSelector;
@@ -154,9 +155,9 @@ public final class CachingRegistryTests {
 		this.cachingRegistry.register(s1, "pseudo-consumer-1");
 
 		// notify1
-		List<Registration<?>> registrations = this.cachingRegistry.select("test");
+		LinkedRegistrations<?> registrations = this.cachingRegistry.select("test");
 
-		assertEquals( "number of consumers incorrect", 1, registrations.size());
+		assertEquals( "number of consumers incorrect", 1, registrations.iterator().hasNext());
 
 
 		// consumer2
@@ -178,10 +179,18 @@ public final class CachingRegistryTests {
 
 		// notify2
 		registrations = this.cachingRegistry.select("test");
-		assertEquals( "number of consumers incorrect", 3, registrations.size());
+		int i = 0;
+		for(Object o : registrations){
+			i++;
+		}
+		assertEquals( "number of consumers incorrect", 3, i);
 
 		registrations = this.cachingRegistry.select("test2");
-		assertEquals( "number of consumers incorrect", 2, registrations.size());
+		i = 0;
+		for(Object o : registrations){
+			i++;
+		}
+		assertEquals( "number of consumers incorrect", 2, i);
 
 
 		/*for(Registration<?> registration : registrations){

@@ -16,18 +16,16 @@
 
 package reactor.filter;
 
-import java.util.List;
-
 import reactor.util.Assert;
 
 abstract class AbstractFilter implements Filter {
 
 	@Override
-	public final <T> List<T> filter(List<T> items, Object key) {
+	public final <T> Iterable<T> filter(Iterable<T> items, Object key) {
 		Assert.notNull(items, "items must not be null");
 		return doFilter(items, key);
 	}
 
-	protected abstract <T> List<T> doFilter(List<T> items, Object key);
+	protected abstract <T> Iterable<T> doFilter(Iterable<T> items, Object key);
 
 }

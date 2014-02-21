@@ -16,10 +16,7 @@
 
 package reactor.filter;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -32,6 +29,7 @@ import reactor.util.Assert;
  * passed into the filter.
  *
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  *
  */
 public final class RoundRobinFilter extends AbstractFilter {
@@ -45,13 +43,18 @@ public final class RoundRobinFilter extends AbstractFilter {
 	private final Map<Object, AtomicLong> usageCounts = new HashMap<Object, AtomicLong>();
 
 	@Override
-	public <T> List<T> doFilter(List<T> items, Object key) {
+	public <T> Iterable<T> doFilter(Iterable<T> items, Object key) {
 		Assert.notNull(key, "'key' must not be null");
-		if (items.isEmpty()) {
+		Iterator<T> iterator = items.iterator();
+		if (!iterator.hasNext()) {
 			return items;
 		} else {
-			int index = (int)(getUsageCount(key).getAndIncrement() % (items.size()));
-			return Collections.singletonList(items.get(index));
+			List<T> buffer = new ArrayList<T>();
+			while(iterator.hasNext()){
+				buffer.add(iterator.next());
+			}
+			int index = (int)(getUsageCount(key).getAndIncrement() % (buffer.size()));
+			return Collections.singletonList(buffer.get(index));
 		}
 	}
 

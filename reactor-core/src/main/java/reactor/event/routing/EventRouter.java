@@ -18,6 +18,7 @@ package reactor.event.routing;
 
 import java.util.List;
 
+import reactor.event.registry.LinkedRegistrations;
 import reactor.function.Consumer;
 import reactor.event.Event;
 import reactor.event.registry.Registration;
@@ -26,6 +27,7 @@ import reactor.event.registry.Registration;
  * An {@code EventRouter} is used to route an {@code Event} to {@link Consumer Consumers}.
  *
  * @author Andy Wilkinson
+ * @author Stephane Maldini
  *
  */
 public interface EventRouter {
@@ -44,6 +46,7 @@ public interface EventRouter {
 	 * @param completionConsumer The {@code Consumer} to invoke upon successful completion of event routing
 	 * @param errorConsumer The {@code Consumer} to invoke when an error occurs during event routing
 	 */
-	void route(Object key, Event<?> event, List<Registration<? extends Consumer<? extends Event<?>>>> consumers, Consumer<?> completionConsumer, Consumer<Throwable> errorConsumer);
+	void route(Object key, Event<?> event, LinkedRegistrations<Consumer<? extends Event<?>>> consumers,
+	           Consumer<?> completionConsumer, Consumer<Throwable> errorConsumer);
 
 }
