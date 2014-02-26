@@ -1,5 +1,6 @@
 package reactor.groovy.config;
 
+import reactor.event.registry.LinkedRegistrations;
 import reactor.event.support.CallbackEvent;
 import reactor.core.composable.Deferred;
 import reactor.core.composable.Stream;
@@ -29,7 +30,7 @@ public class StreamEventRouter extends ConsumerFilteringEventRouter {
 
 	@Override
 	public void route(final Object key, final Event<?> event,
-	                  final List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+	                  final LinkedRegistrations<Consumer<? extends Event<?>>> consumers,
 	                  final Consumer<?> completionConsumer, final Consumer<Throwable> errorConsumer) {
 
 		try {

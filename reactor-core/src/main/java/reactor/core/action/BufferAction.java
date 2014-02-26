@@ -20,6 +20,7 @@ import reactor.event.Event;
 import reactor.function.Consumer;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -46,7 +47,7 @@ public class BufferAction<T> extends BatchAction<T> implements Flushable<T> {
 				}
 			});
 		}
-		this.values = new ArrayList<Event<T>>(batchSize > 1 ? batchSize : 256);
+		this.values = batchSize > 1 ? new ArrayList<Event<T>>(batchSize) : new LinkedList<Event<T>>();
 	}
 
 	@Override
