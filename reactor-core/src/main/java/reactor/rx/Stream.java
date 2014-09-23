@@ -48,46 +48,43 @@ import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Base class for components designed to provide a succinct API for working with future values.
- * Provides base functionality and an internal contract for subclasses that make use of
- * the {@link #map(reactor.function.Function)} and {@link #filter(reactor.function.Predicate)} methods.
+ * Base class for components designed to provide a succinct API for working with future values. Provides base
+ * functionality and an internal contract for subclasses that make use of the {@link #map(reactor.function.Function)}
+ * and {@link #filter(reactor.function.Predicate)} methods.
  * <p>
- * A Stream can be implemented to perform specific actions on callbacks (doNext,doComplete,doError,doSubscribe).
- * It is an asynchronous boundary and will run the callbacks using the input {@link Dispatcher}. Stream can
- * eventually produce a result {@param <O>} and will offer cascading over its own subscribers.
+ * A Stream can be implemented to perform specific actions on callbacks (doNext,doComplete,doError,doSubscribe). It is
+ * an asynchronous boundary and will run the callbacks using the input {@link Dispatcher}. Stream can eventually produce
+ * a result {@param <O>} and will offer cascading over its own subscribers.
  * <p>
- * *
- * Typically, new {@code Stream Streams} aren't created directly. To create a {@code Stream},
- * create a {@link reactor.rx.spec.Streams} and configure it with the appropriate {@link Environment},
- * {@link Dispatcher}, and other settings.
+ * * Typically, new {@code Stream Streams} aren't created directly. To create a {@code Stream}, create a {@link
+ * reactor.rx.spec.Streams} and configure it with the appropriate {@link Environment}, {@link Dispatcher}, and other
+ * settings.
  *
- * @param <O> The type of the output values
+ * @param <O>
+ * 		The type of the output values
+ *
  * @author Stephane Maldini
  * @author Jon Brisbin
  * @since 1.1, 2.0
  */
 public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
-	protected static final Logger log = LoggerFactory.getLogger(Stream.class);
-
-	public static final Router ROUTER = new ConsumerFilteringRouter(
+	public static final    Router ROUTER = new ConsumerFilteringRouter(
 			new PassThroughFilter(), new ArgumentConvertingConsumerInvoker(null)
 	);
-
-	private StreamSubscription<O> downstreamSubscription;
-
+	protected static final Logger log    = LoggerFactory.getLogger(Stream.class);
 	protected final Dispatcher dispatcher;
-
 	protected Throwable error = null;
 	protected boolean   pause = false;
 	protected long capacity;
-
 	protected boolean keepAlive    = true;
 	protected boolean ignoreErrors = false;
 	protected Environment environment;
 	protected State state = State.READY;
+	private StreamSubscription<O> downstreamSubscription;
 
 	public Stream() {
 		this(Long.MAX_VALUE);
@@ -116,32 +113,28 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Bind the stream to a given {@param elements} volume of in-flight data:
-	 * - An {@link Action} will request up to the defined volume upstream.
-	 * - An {@link Action} will track the pending requests and fire up to {@param elements} when the previous volume has
-	 * been processed.
-	 * - A {@link BatchAction} and any other size-bound action will be limited to the defined volume.
+	 * Bind the stream to a given {@param elements} volume of in-flight data: - An {@link Action} will request up to the
+	 * defined volume upstream. - An {@link Action} will track the pending requests and fire up to {@param elements} when
+	 * the previous volume has been processed. - A {@link BatchAction} and any other size-bound action will be limited to
+	 * the defined volume.
 	 * <p>
 	 * <p>
 	 * A stream capacity can't be superior to the underlying dispatcher capacity: if the {@param elements} overflow the
-	 * dispatcher backlog size, the capacity will be aligned automatically to fit it. A warning message should signal
-	 * such behavior.
-	 * RingBufferDispatcher will for instance limit to a power of 2 size up to {@literal Integer.MAX_VALUE},
+	 * dispatcher backlog size, the capacity will be aligned automatically to fit it. A warning message should signal such
+	 * behavior. RingBufferDispatcher will for instance limit to a power of 2 size up to {@literal Integer.MAX_VALUE},
 	 * where a Stream can be sized up to {@literal Long.MAX_VALUE} in flight data.
 	 * <p>
 	 * <p>
 	 * When the stream receives more elements than requested, incoming data is eventually staged in the eventual {@link
-	 * org.reactivestreams.Subscription}.
-	 * The subscription can react differently according to the implementation in-use,
-	 * the default strategy is as following:
-	 * - The first-level of pair compositions Stream->Action will overflow data in a {@link CompletableQueue},
-	 * ready to be polled when the action fire the pending requests.
-	 * - The following pairs of Action->Action will synchronously pass data
-	 * - Any pair of Stream->Subscriber or Action->Subscriber will behave as with the root Stream->Action pair rule.
-	 * - {@link this#onOverflowBuffer()} force this staging behavior, with a possibilty to pass a {@link reactor.queue
-	 * .PersistentQueue}
+	 * org.reactivestreams.Subscription}. The subscription can react differently according to the implementation in-use,
+	 * the default strategy is as following: - The first-level of pair compositions Stream->Action will overflow data in a
+	 * {@link CompletableQueue}, ready to be polled when the action fire the pending requests. - The following pairs of
+	 * Action->Action will synchronously pass data - Any pair of Stream->Subscriber or Action->Subscriber will behave as
+	 * with the root Stream->Action pair rule. - {@link this#onOverflowBuffer()} force this staging behavior, with a
+	 * possibilty to pass a {@link reactor.queue .PersistentQueue}
 	 *
 	 * @param elements
+	 *
 	 * @return {@literal this}
 	 */
 	public Stream<O> capacity(long elements) {
@@ -149,9 +142,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 				dispatcher.backlogSize() - Action.RESERVED_SLOTS : elements;
 		if (capacity != elements) {
 			log.warn("The Stream altered the requested maximum capacity {} to not overrun its Dispatcher which supports " +
-							"up to {} slots for next signals, minus {} slots for others signals amid error," +
-							" complete, subscribe and upstream request. The assigned capacity is now {}",
-					elements, dispatcher.backlogSize(), Action.RESERVED_SLOTS, capacity);
+					         "up to {} slots for next signals, minus {} slots for others signals amid error," +
+					         " complete, subscribe and upstream request. The assigned capacity is now {}",
+			         elements, dispatcher.backlogSize(), Action.RESERVED_SLOTS, capacity);
 		}
 		return this;
 	}
@@ -160,6 +153,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * Update the environment used by this {@link Stream}
 	 *
 	 * @param environment
+	 *
 	 * @return {@literal this}
 	 */
 	public Stream<O> env(Environment environment) {
@@ -172,6 +166,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * automatically on complete. Shutdown state is observed when the last subscriber is cancelled.
 	 *
 	 * @param keepAlive
+	 *
 	 * @return {@literal this}
 	 */
 	public Stream<O> keepAlive(boolean keepAlive) {
@@ -184,6 +179,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * error
 	 *
 	 * @param ignore
+	 *
 	 * @return {@literal this}
 	 */
 	public Stream<O> ignoreErrors(boolean ignore) {
@@ -210,14 +206,17 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose values will be the current instance of the {@link Stream}. Everytime
-	 * the {@param controlStream} receives a next signal, the current Stream and the input data will be published as a
-	 * {@link reactor.tuple.Tuple2} to the attached {@param controller}.
+	 * Create a new {@code Stream} whose values will be the current instance of the {@link Stream}. Everytime the {@param
+	 * controlStream} receives a next signal, the current Stream and the input data will be published as a {@link
+	 * reactor.tuple.Tuple2} to the attached {@param controller}.
 	 * <p>
-	 * This is particulary useful to dynamically adapt the {@link Stream} instance : capacity, pause(), resume()...
+	 * This is particularly useful to dynamically adapt the {@link Stream} instance : capacity, pause(), resume()...
 	 *
-	 * @param controlStream The consumed stream, each signal will trigger the passed controller
-	 * @param controller    The consumer accepting a pair of Stream and user-provided signal type
+	 * @param controlStream
+	 * 		The consumed stream, each signal will trigger the passed controller
+	 * @param controller
+	 * 		The consumer accepting a pair of Stream and user-provided signal type
+	 *
 	 * @return the current {@link Stream} instance
 	 * @since 2.0
 	 */
@@ -235,7 +234,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Cast the current Stream flowing data type into a target class type.
 	 *
-	 * @param <E> the {@link Action} output type
+	 * @param <E>
+	 * 		the {@link Action} output type
+	 *
 	 * @return the current {link Stream} instance casted
 	 * @since 2.0
 	 */
@@ -245,18 +246,19 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Subscribe an {@link Action} to the actual pipeline.
-	 * Additionally to producing events (error,complete,next and eventually flush), it will take care of setting the
-	 * environment if available.
-	 * It will also give an initial capacity size used for {@link org.reactivestreams.Subscription#request(long)} ONLY
-	 * IF the passed action capacity is not the default Long.MAX_VALUE ({@see this#capacity(elements)}.
-	 * Current KeepAlive value is also assigned
+	 * Subscribe an {@link Action} to the actual pipeline. Additionally to producing events (error,complete,next and
+	 * eventually flush), it will take care of setting the environment if available. It will also give an initial capacity
+	 * size used for {@link org.reactivestreams.Subscription#request(long)} ONLY IF the passed action capacity is not the
+	 * default Long.MAX_VALUE ({@see this#capacity(elements)}. Current KeepAlive value is also assigned
 	 * <p>
-	 * Reactive Extensions patterns also dubs this operation "lift".
-	 * The operation is returned for functional-style chaining.
+	 * Reactive Extensions patterns also dubs this operation "lift". The operation is returned for functional-style
+	 * chaining.
 	 *
-	 * @param stream the processor to subscribe.
-	 * @param <E>    the {@link Action} output type
+	 * @param stream
+	 * 		the processor to subscribe.
+	 * @param <E>
+	 * 		the {@link Action} output type
+	 *
 	 * @return the current {link Stream} instance
 	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
 	 * @since 2.0
@@ -274,11 +276,13 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Subscribe an {@link Subscriber} to the actual pipeline. Additionally to producing events (error,complete,next,
-	 * subscribe),
-	 * Reactive Extensions patterns also dubs this operation "lift".
+	 * subscribe), Reactive Extensions patterns also dubs this operation "lift".
 	 *
-	 * @param stream the processor to subscribe.
-	 * @param <E>    the {@link Subscriber} output type
+	 * @param stream
+	 * 		the processor to subscribe.
+	 * @param <E>
+	 * 		the {@link Subscriber} output type
+	 *
 	 * @return the current {link Stream} instance
 	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
 	 * @since 2.0
@@ -291,22 +295,29 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Assign an error handler to exceptions of the given type.
 	 *
-	 * @param exceptionType the type of exceptions to handle
-	 * @param onError       the error handler for each exception
-	 * @param <E>           type of the exception to handle
+	 * @param exceptionType
+	 * 		the type of exceptions to handle
+	 * @param onError
+	 * 		the error handler for each exception
+	 * @param <E>
+	 * 		type of the exception to handle
+	 *
 	 * @return {@literal this}
 	 */
 	@SuppressWarnings("unchecked")
 	public <E extends Throwable> Action<O, O> when(@Nonnull final Class<E> exceptionType,
-	                                            @Nonnull final Consumer<E> onError) {
+	                                               @Nonnull final Consumer<E> onError) {
 		return connect(new ErrorAction<O, E>(dispatcher, Selectors.T(exceptionType), onError));
 	}
 
 	/**
 	 * Materialize an error state into a downstream event.
 	 *
-	 * @param exceptionType the type of exceptions to handle
-	 * @param <E>           type of the exception to handle
+	 * @param exceptionType
+	 * 		the type of exceptions to handle
+	 * @param <E>
+	 * 		type of the exception to handle
+	 *
 	 * @return {@literal this}
 	 * @since 2.0
 	 */
@@ -316,13 +327,15 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow. Only error and complete signal will be
-	 * signaled downstream. It will also eagerly prefetch upstream publisher.
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. Only error and complete signal will be signaled
+	 * downstream. It will also eagerly prefetch upstream publisher.
 	 * <p>
 	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.function.Consumer)}
 	 *
-	 * @param consumer the consumer to invoke on each value
+	 * @param consumer
+	 * 		the consumer to invoke on each value
+	 *
 	 * @return {@literal this}
 	 */
 	public Action<O, Void> consume(@Nonnull final Consumer<? super O> consumer) {
@@ -330,10 +343,11 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will observe any values accepted by this {@code
-	 * Stream}.
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe any values accepted by this {@code Stream}.
 	 *
-	 * @param consumer the consumer to invoke on each value
+	 * @param consumer
+	 * 		the consumer to invoke on each value
+	 *
 	 * @return {@literal this}
 	 * @since 2.0
 	 */
@@ -342,12 +356,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will observe terminal signal complete|error. It will pass
-	 * the
-	 * newly created {@link Stream} to the consumer for state introspection, e.g. {@link #getState()}
-	 * Stream}.
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe terminal signal complete|error. It will pass the
+	 * newly created {@link Stream} to the consumer for state introspection, e.g. {@link #getState()} Stream}.
 	 *
-	 * @param consumer the consumer to invoke on terminal signal
+	 * @param consumer
+	 * 		the consumer to invoke on terminal signal
+	 *
 	 * @return {@literal this}
 	 * @since 2.0
 	 */
@@ -359,8 +373,11 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Pass values accepted by this {@code Stream} into the given {@link Observable}, notifying with the given key.
 	 *
-	 * @param key        the key to notify on
-	 * @param observable the {@link Observable} to notify
+	 * @param key
+	 * 		the key to notify on
+	 * @param observable
+	 * 		the {@link Observable} to notify
+	 *
 	 * @return {@literal this}
 	 * @since 1.1, 2.0
 	 */
@@ -371,7 +388,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Assign the a new Dispatcher to the returned Stream.
 	 *
-	 * @param dispatcher the new dispatcher
+	 * @param dispatcher
+	 * 		the new dispatcher
+	 *
 	 * @return a new {@link Action} running on a different {@link Dispatcher}
 	 */
 	public Action<O, O> dispatchOn(@Nonnull final Dispatcher dispatcher) {
@@ -385,8 +404,11 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code V} and pass it into
 	 * another {@code Stream}.
 	 *
-	 * @param fn  the transformation function
-	 * @param <V> the type of the return value of the transformation function
+	 * @param fn
+	 * 		the transformation function
+	 * @param <V>
+	 * 		the type of the return value of the transformation function
+	 *
 	 * @return a new {@link Action} containing the transformed values
 	 */
 	public <V> Action<O, V> map(@Nonnull final Function<? super O, ? extends V> fn) {
@@ -394,11 +416,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass
-	 * it into another {@code Stream}.
+	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass it
+	 * into another {@code Stream}.
 	 *
-	 * @param fn  the transformation function
-	 * @param <V> the type of the return value of the transformation function
+	 * @param fn
+	 * 		the transformation function
+	 * @param <V>
+	 * 		the type of the return value of the transformation function
+	 *
 	 * @return a new {@link Action} containing the transformed values
 	 * @since 1.1, 2.0
 	 */
@@ -443,41 +468,47 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	@SuppressWarnings("unchecked")
 	public final <V> Action<O, V> zip(@Nonnull Function<TupleN, ? extends V> zipper) {
 		return connect((Action<O, V>)
-						new DynamicMergeAction<Object, V>(dispatcher, new ZipAction<Object, V, TupleN>(dispatcher, zipper, null))
+				               new DynamicMergeAction<Object, V>(dispatcher,
+				                                                 new ZipAction<Object, V, TupleN>(dispatcher, zipper, null))
 		);
 	}
 
 	/**
-	 * Partition the stream output into N number of CPU cores sub-streams. Each partition will run on an exclusive
-	 * {@link reactor.event.dispatch.RingBufferDispatcher}.
+	 * Partition the stream output into N number of CPU cores sub-streams. Each partition will run on an exclusive {@link
+	 * reactor.event.dispatch.RingBufferDispatcher}.
 	 *
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	public final  ParallelAction<O> parallel() {
+	public final ParallelAction<O> parallel() {
 		return parallel(Environment.PROCESSORS);
 	}
 
 	/**
-	 * Partition the stream output into N {@param poolsize} sub-streams. Each partition will run on an exclusive
-	 * {@link reactor.event.dispatch.RingBufferDispatcher}.
+	 * Partition the stream output into N {@param poolsize} sub-streams. Each partition will run on an exclusive {@link
+	 * reactor.event.dispatch.RingBufferDispatcher}.
 	 *
-	 * @param poolsize The level of concurrency to use
+	 * @param poolsize
+	 * 		The level of concurrency to use
+	 *
 	 * @return A Stream of {@link Stream<O>}
 	 * @since 2.0
 	 */
-	public final  ParallelAction<O> parallel(final Integer poolsize) {
+	public final ParallelAction<O> parallel(final Integer poolsize) {
 		return parallel(poolsize, environment != null ?
 				environment.getDefaultDispatcherFactory() :
 				Environment.newSingleProducerMultiConsumerDispatcherFactory(poolsize, "parallel-stream"));
 	}
 
 	/**
-	 * Partition the stream output into N {@param poolsize} sub-streams. EEach partition will run on an exclusive
-	 * {@link Dispatcher} provided by the given {@param dispatcherSupplier}.
+	 * Partition the stream output into N {@param poolsize} sub-streams. EEach partition will run on an exclusive {@link
+	 * Dispatcher} provided by the given {@param dispatcherSupplier}.
 	 *
-	 * @param poolsize           The level of concurrency to use
-	 * @param dispatcherSupplier The {@link Supplier} to provide concurrent {@link Dispatcher}.
+	 * @param poolsize
+	 * 		The level of concurrency to use
+	 * @param dispatcherSupplier
+	 * 		The {@link Supplier} to provide concurrent {@link Dispatcher}.
+	 *
 	 * @return A Stream of {@link Action}
 	 * @since 2.0
 	 */
@@ -504,7 +535,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * downstream. A buffering capable stream will prevent underlying dispatcher to be saturated (and sometimes
 	 * blocking).
 	 *
-	 * @param queue A completable queue {@link reactor.function.Supplier} to provide support for overflow
+	 * @param queue
+	 * 		A completable queue {@link reactor.function.Supplier} to provide support for overflow
+	 *
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
@@ -525,7 +558,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * passed into the new {@code Stream}. If the predicate test fails, the value is propagated into the {@link
 	 * reactor.rx.action.FilterAction#otherwise()} composable .
 	 *
-	 * @param p the {@link Predicate} to test values against
+	 * @param p
+	 * 		the {@link Predicate} to test values against
+	 *
 	 * @return a new {@link Action} containing only values that pass the predicate test
 	 */
 	public FilterAction<O, Stream<O>> filter(final Predicate<? super O> p) {
@@ -533,8 +568,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Evaluate each accepted boolean value. If the predicate test succeeds, the value is
-	 * passed into the new {@code Stream}. If the predicate test fails, the value is ignored.
+	 * Evaluate each accepted boolean value. If the predicate test succeeds, the value is passed into the new {@code
+	 * Stream}. If the predicate test fails, the value is ignored.
 	 *
 	 * @return a new {@link Action} containing only values that pass the predicate test
 	 * @since 1.1, 2.0
@@ -567,10 +602,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair. The action will start
-	 * propagating errors after {@param numRetries}.
-	 * This is generally useful for retry strategies and fault-tolerant streams.
+	 * propagating errors after {@param numRetries}. This is generally useful for retry strategies and fault-tolerant
+	 * streams.
 	 *
-	 * @param numRetries the number of times to tolerate an error
+	 * @param numRetries
+	 * 		the number of times to tolerate an error
+	 *
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
@@ -579,11 +616,13 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair.
-	 * {@param retryMatcher} will test an incoming {@link Throwable}, if positive the retry will occur.
-	 * This is generally useful for retry strategies and fault-tolerant streams.
+	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair. {@param retryMatcher} will
+	 * test an incoming {@link Throwable}, if positive the retry will occur. This is generally useful for retry strategies
+	 * and fault-tolerant streams.
 	 *
-	 * @param retryMatcher the predicate to evaluate if retry should occur based on a given error signal
+	 * @param retryMatcher
+	 * 		the predicate to evaluate if retry should occur based on a given error signal
+	 *
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
@@ -593,13 +632,15 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Create a new {@code Stream} whose will re-subscribe its oldest parent-child stream pair. The action will start
-	 * propagating errors after {@param numRetries}. {@param retryMatcher} will test an incoming {@Throwable},
-	 * if positive
-	 * the retry will occur (in conjonction with the {@param numRetries} condition).
-	 * This is generally useful for retry strategies and fault-tolerant streams.
+	 * propagating errors after {@param numRetries}. {@param retryMatcher} will test an incoming {@Throwable}, if positive
+	 * the retry will occur (in conjonction with the {@param numRetries} condition). This is generally useful for retry
+	 * strategies and fault-tolerant streams.
 	 *
-	 * @param numRetries   the number of times to tolerate an error
-	 * @param retryMatcher the predicate to evaluate if retry should occur based on a given error signal
+	 * @param numRetries
+	 * 		the number of times to tolerate an error
+	 * @param retryMatcher
+	 * 		the predicate to evaluate if retry should occur based on a given error signal
+	 *
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
@@ -610,7 +651,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Create a new {@code Stream} that will signal next elements up to {@param max} times.
 	 *
-	 * @param max the number of times to broadcast next signals before dropping
+	 * @param max
+	 * 		the number of times to broadcast next signals before dropping
+	 *
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
@@ -621,7 +664,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Create a new {@code Stream} that will signal next elements until {@param limitMatcher} is true.
 	 *
-	 * @param limitMatcher the predicate to evaluate for starting dropping events
+	 * @param limitMatcher
+	 * 		the predicate to evaluate for starting dropping events
+	 *
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
@@ -630,11 +675,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Create a new {@code Stream} that will signal next elements until {@param limitMatcher} is true or
-	 * up to {@param max} times.
+	 * Create a new {@code Stream} that will signal next elements until {@param limitMatcher} is true or up to {@param
+	 * max} times.
 	 *
-	 * @param max          the number of times to broadcast next signals before dropping
-	 * @param limitMatcher the predicate to evaluate for starting dropping events
+	 * @param max
+	 * 		the number of times to broadcast next signals before dropping
+	 * @param limitMatcher
+	 * 		the predicate to evaluate for starting dropping events
+	 *
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
@@ -644,8 +692,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Create a new {@code Stream} that accepts a {@link reactor.tuple.Tuple2} of T1 {@link Long} nanotime and T2 {@link
-	 * <T>}
-	 * associated data
+	 * <T>} associated data
 	 *
 	 * @return a new {@link Action} that emits tuples of nano time and matching data
 	 * @since 2.0
@@ -656,9 +703,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Create a new {@code Stream} that accepts a {@link reactor.tuple.Tuple2} of T1 {@link Long} nanotime and T2 {@link
-	 * <T>}
-	 * associated data. The nanotime corresponds to the elapsed time between the subscribe and the first next signals OR
-	 * between two next signals.
+	 * <T>} associated data. The nanotime corresponds to the elapsed time between the subscribe and the first next signals
+	 * OR between two next signals.
 	 *
 	 * @return a new {@link Action} that emits tuples of nano time and matching data
 	 * @since 2.0
@@ -668,8 +714,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code capacity}
-	 * to
+	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code capacity} to
 	 * have been set.
 	 * <p>
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
@@ -681,13 +726,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code capacity}
-	 * to
+	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code capacity} to
 	 * have been set.
 	 * <p>
 	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 *
-	 * @param batchSize the batch size to use
+	 * @param batchSize
+	 * 		the batch size to use
+	 *
 	 * @return a new {@link Action} whose values are the first value of each batch)
 	 */
 	public Action<O, O> first(long batchSize) {
@@ -708,7 +754,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code capacity}
 	 *
-	 * @param batchSize the batch size to use
+	 * @param batchSize
+	 * 		the batch size to use
+	 *
 	 * @return a new {@link Action} whose values are the last value of each batch
 	 */
 	public Action<O, O> every(long batchSize) {
@@ -726,9 +774,66 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		return connect(d);
 	}
 
+	public CollectAction<O> collectAll() {
+		CollectAction<O> c = new CollectAction<O>(dispatcher, -1, -1, null, null, null, null, null);
+		return connect(c);
+	}
+
+	public CollectAction<O> collect(long amount) {
+		CollectAction<O> c = new CollectAction<O>(dispatcher, amount, -1, null, null, null, null, null);
+		return connect(c);
+	}
+
+	public CollectAction<O> collectFor(long time, TimeUnit unit) {
+		CollectAction<O> c = new CollectAction<O>(dispatcher, -1, time, unit, environment.getRootTimer(), null, null, null);
+		return connect(c);
+	}
+
+	public CollectAction<O> collectWhile(Predicate<O> whenFalseTrigger) {
+		CollectAction<O> c = new CollectAction<O>(dispatcher, -1, -1, null, null, whenFalseTrigger, null, null);
+		return connect(c);
+	}
+
+	public CollectAction<O> collectUntil(Predicate<O> whenTrueTrigger) {
+		CollectAction<O> c = new CollectAction<O>(dispatcher, -1, -1, null, null, null, whenTrueTrigger, null);
+		return connect(c);
+	}
+
+	public CollectAction<O> collectDistinct() {
+		return collectDistinct(new Predicate<O>() {
+			O last = null;
+
+			@Override
+			public boolean test(O o) {
+				boolean distinct = (null == last || last != o || !last.equals(o));
+				last = o;
+				return distinct;
+			}
+		});
+	}
+
+	public <K> CollectAction<O> collectDistinctByKey(final Function<O, K> keyMapper) {
+		return collectDistinct(new Predicate<O>() {
+			K last = null;
+
+			@Override
+			public boolean test(O o) {
+				K key = keyMapper.apply(o);
+				boolean distinct = (null == last || last != key || !last.equals(key));
+				last = key;
+				return distinct;
+			}
+		});
+	}
+
+	public CollectAction<O> collectDistinct(Predicate<O> distinctTrigger) {
+		CollectAction<O> c = new CollectAction<O>(dispatcher, -1, -1, null, null, null, null, distinctTrigger);
+		return connect(c);
+	}
+
 	/**
-	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
+	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream When a new
+	 * batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
 	 * @return a new {@link Action} whose values result from the iterable input
 	 * @since 1.1, 2.0
@@ -742,7 +847,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * <p>
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
-	 * @param batchSize the batch size to use
+	 * @param batchSize
+	 * 		the batch size to use
+	 *
 	 * @return a new {@link Action} whose values result from the iterable input
 	 * @since 1.1, 2.0
 	 */
@@ -757,8 +864,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Create a {@link reactor.function.support.Tap} that maintains a reference to the last value seen by this {@code
-	 * Stream}. The {@link reactor.function.support.Tap} is
-	 * continually updated when new values pass through the {@code Stream}.
+	 * Stream}. The {@link reactor.function.support.Tap} is continually updated when new values pass through the {@code
+	 * Stream}.
 	 *
 	 * @return the new {@link reactor.function.support.Tap}
 	 * @see Consumer
@@ -771,8 +878,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Collect incoming values into a {@link java.util.List} that will be pushed into the returned {@code Stream} every
-	 * time {@code
-	 * capacity} or flush is triggered has been reached.
+	 * time {@code capacity} or flush is triggered has been reached.
 	 *
 	 * @return a new {@link Action} whose values are a {@link java.util.List} of all values in this batch
 	 */
@@ -784,7 +890,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time {@code
 	 * capacity} has been reached.
 	 *
-	 * @param batchSize the collected size
+	 * @param batchSize
+	 * 		the collected size
+	 *
 	 * @return a new {@link Action} whose values are a {@link List} of all values in this batch
 	 */
 	public Action<O, List<O>> buffer(long batchSize) {
@@ -795,7 +903,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * Collect incoming values into an internal array, providing a {@link List} that will be pushed into the returned
 	 * {@code Stream}. The buffer will retain up to the last {@param backlog} elements in memory.
 	 *
-	 * @param backlog maximum amount of items to keep
+	 * @param backlog
+	 * 		maximum amount of items to keep
+	 *
 	 * @return a new {@link Action} whose values are a {@link List} of all values in this buffer
 	 * @since 2.0
 	 */
@@ -805,10 +915,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned
-	 * fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
-	 * complete signal or request signal.
-	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()}, complete signal or request
+	 * signal. PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
 	 * @return a new {@link Action} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
@@ -819,11 +927,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned
-	 * fresh {@link Stream}. Possible flush triggers are: {@param maxCapacity}, complete signal or request signal.
-	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@param maxCapacity}, complete signal or request
+	 * signal. PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
-	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
+	 * @param maxCapacity
+	 * 		a fixed maximum number or elements to re-order at once.
+	 *
 	 * @return a new {@link Action} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
 	 */
@@ -833,12 +942,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned
-	 * fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
-	 * complete signal or request signal.
-	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()}, complete signal or request
+	 * signal. PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
-	 * @param comparator A {@link Comparator<O>} to evaluate incoming data
+	 * @param comparator
+	 * 		A {@link Comparator<O>} to evaluate incoming data
+	 *
 	 * @return a new {@link Action} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
 	 */
@@ -848,12 +957,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned
-	 * fresh {@link Stream}. Possible flush triggers are: {@param maxCapacity}, complete signal or request signal.
-	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@param maxCapacity}, complete signal or request
+	 * signal. PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
-	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
-	 * @param comparator  A {@link Comparator<O>} to evaluate incoming data
+	 * @param maxCapacity
+	 * 		a fixed maximum number or elements to re-order at once.
+	 * @param comparator
+	 * 		A {@link Comparator<O>} to evaluate incoming data
+	 *
 	 * @return a new {@link Action} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
 	 */
@@ -873,10 +984,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@param backlog} times.
-	 * The nested streams will be pushed into the returned {@code Stream}.
+	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@param backlog} times. The
+	 * nested streams will be pushed into the returned {@code Stream}.
 	 *
-	 * @param backlog the time period when each window close and flush the attached consumer
+	 * @param backlog
+	 * 		the time period when each window close and flush the attached consumer
+	 *
 	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
@@ -885,10 +998,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the
-	 * {param keyMapper}.
+	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the {param
+	 * keyMapper}.
 	 *
-	 * @param keyMapper the key mapping function that evaluates an incoming data and returns a key.
+	 * @param keyMapper
+	 * 		the key mapping function that evaluates an incoming data and returns a key.
+	 *
 	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
@@ -897,8 +1012,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the
-	 * {param keyMapper}. The hashcode of the incoming data will be used for partitioning
+	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the {param
+	 * keyMapper}. The hashcode of the incoming data will be used for partitioning
 	 *
 	 * @return a new {@link Action} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
@@ -916,9 +1031,13 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
 	 * passed to the function's {@link reactor.tuple.Tuple2} argument.
 	 *
-	 * @param fn      the reduce function
-	 * @param initial the initial argument to pass to the reduce function
-	 * @param <A>     the type of the reduced object
+	 * @param fn
+	 * 		the reduce function
+	 * @param initial
+	 * 		the initial argument to pass to the reduce function
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@link Action} whose values contain only the reduced objects
 	 */
 	public <A> Action<O, A> reduce(@Nonnull Function<Tuple2<O, A>, A> fn, A initial) {
@@ -931,15 +1050,19 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * Stream}, or on the first value of each batch, if a {@code capacity} is set.
 	 * <p>
 	 * In an unbounded {@code Stream}, the accumulated value will be published on the returned {@code Stream} on flush
-	 * only. But when a {@code capacity} has been, the accumulated
-	 * value will only be published on the new {@code Stream} at the end of each batch. On the next value (the first of
-	 * the next batch), the {@link Supplier} is called again for a new accumulator object and the reduce starts over with
-	 * a new accumulator.
+	 * only. But when a {@code capacity} has been, the accumulated value will only be published on the new {@code Stream}
+	 * at the end of each batch. On the next value (the first of the next batch), the {@link Supplier} is called again for
+	 * a new accumulator object and the reduce starts over with a new accumulator.
 	 *
-	 * @param fn           the reduce function
-	 * @param accumulators the {@link Supplier} that will provide accumulators
-	 * @param batchSize    the batch size to use
-	 * @param <A>          the type of the reduced object
+	 * @param fn
+	 * 		the reduce function
+	 * @param accumulators
+	 * 		the {@link Supplier} that will provide accumulators
+	 * @param batchSize
+	 * 		the batch size to use
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@link Action} whose values contain only the reduced objects
 	 */
 	public <A> Action<O, A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators,
@@ -957,8 +1080,11 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Reduce the values passing through this {@code Stream} into an object {@code A}.
 	 *
-	 * @param fn  the reduce function
-	 * @param <A> the type of the reduced object
+	 * @param fn
+	 * 		the reduce function
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@link Action} whose values contain only the reduced objects
 	 */
 	public <A> Action<O, A> reduce(@Nonnull final Function<Tuple2<O, A>, A> fn) {
@@ -970,9 +1096,13 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * passed to the function's {@link Tuple2} argument. Behave like Reduce but triggers downstream Stream for every
 	 * transformation.
 	 *
-	 * @param fn      the scan function
-	 * @param initial the initial argument to pass to the reduce function
-	 * @param <A>     the type of the reduced object
+	 * @param fn
+	 * 		the scan function
+	 * @param initial
+	 * 		the initial argument to pass to the reduce function
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@link Action} whose values contain only the reduced objects
 	 * @since 1.1, 2.0
 	 */
@@ -985,27 +1115,32 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 * used to produce initial accumulator objects either on the first reduce call, in the case of an unbounded {@code
 	 * Stream}, or on the first value of each batch, if a {@code capacity} is set.
 	 * <p>
-	 * The accumulated value will be published on the returned {@code Stream} every time
-	 * a
-	 * value is accepted.
+	 * The accumulated value will be published on the returned {@code Stream} every time a value is accepted.
 	 *
-	 * @param fn           the scan function
-	 * @param accumulators the {@link Supplier} that will provide accumulators
-	 * @param <A>          the type of the reduced object
+	 * @param fn
+	 * 		the scan function
+	 * @param accumulators
+	 * 		the {@link Supplier} that will provide accumulators
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@link Action} whose values contain only the reduced objects
 	 * @since 1.1, 2.0
 	 */
 	public <A> Action<O, A> scan(@Nonnull final Function<Tuple2<O, A>, A> fn, @Nullable final Supplier<A> accumulators) {
 		return connect(new ScanAction<O, A>(accumulators,
-				fn,
-				dispatcher));
+		                                    fn,
+		                                    dispatcher));
 	}
 
 	/**
 	 * Scan the values passing through this {@code Stream} into an object {@code A}.
 	 *
-	 * @param fn  the reduce function
-	 * @param <A> the type of the reduced object
+	 * @param fn
+	 * 		the reduce function
+	 * @param <A>
+	 * 		the type of the reduced object
+	 *
 	 * @return a new {@link Action} whose values contain only the reduced objects
 	 * @since 1.1, 2.0
 	 */
@@ -1032,7 +1167,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Request the parent stream every {@param period} milliseconds. Timeout is run on the environment root timer.
 	 *
-	 * @param period the period in milliseconds between two notifications on this stream
+	 * @param period
+	 * 		the period in milliseconds between two notifications on this stream
+	 *
 	 * @return a new {@link Action}
 	 * @since 2.0
 	 */
@@ -1043,11 +1180,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Request the parent stream every {@param period} milliseconds after an initial {@param delay}.
-	 * Timeout is run on the environment root timer.
+	 * Request the parent stream every {@param period} milliseconds after an initial {@param delay}. Timeout is run on the
+	 * environment root timer.
 	 *
-	 * @param delay  the timeout in milliseconds before starting consuming
-	 * @param period the period in milliseconds between two notifications on this stream
+	 * @param delay
+	 * 		the timeout in milliseconds before starting consuming
+	 * @param period
+	 * 		the period in milliseconds between two notifications on this stream
+	 *
 	 * @return a new {@link Action}
 	 * @since 2.0
 	 */
@@ -1058,12 +1198,16 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Request the parent stream every {@param period} milliseconds after an initial {@param delay}.
-	 * Timeout is run on the given {@param timer}.
+	 * Request the parent stream every {@param period} milliseconds after an initial {@param delay}. Timeout is run on the
+	 * given {@param timer}.
 	 *
-	 * @param period the timeout in milliseconds between two notifications on this stream
-	 * @param delay  the timeout in milliseconds before starting consuming
-	 * @param timer  the reactor timer to run the timeout on
+	 * @param period
+	 * 		the timeout in milliseconds between two notifications on this stream
+	 * @param delay
+	 * 		the timeout in milliseconds before starting consuming
+	 * @param timer
+	 * 		the reactor timer to run the timeout on
+	 *
 	 * @return a new {@link Action}
 	 * @since 2.0
 	 */
@@ -1077,10 +1221,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Request the parent stream when the last notification occurred after {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
+	 * Request the parent stream when the last notification occurred after {@param timeout} milliseconds. Timeout is run
+	 * on the environment root timer.
 	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
+	 * @param timeout
+	 * 		the timeout in milliseconds between two notifications on this composable
+	 *
 	 * @return a new {@link Action}
 	 * @since 1.1, 2.0
 	 */
@@ -1091,11 +1237,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Request the parent stream when the last notification occurred after {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
+	 * Request the parent stream when the last notification occurred after {@param timeout} milliseconds. Timeout is run
+	 * on the environment root timer.
 	 *
-	 * @param timeout the timeout in milliseconds between two notifications on this composable
-	 * @param timer   the reactor timer to run the timeout on
+	 * @param timeout
+	 * 		the timeout in milliseconds between two notifications on this composable
+	 * @param timer
+	 * 		the reactor timer to run the timeout on
+	 *
 	 * @return a new {@link Action}
 	 * @since 1.1, 2.0
 	 */
@@ -1154,9 +1303,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Return the promise of the next triggered signal.
-	 * A promise is a container that will capture only once the first arriving error|next|complete signal
-	 * to this {@link Stream}. It is useful to coordinate on single data streams or await for any signal.
+	 * Return the promise of the next triggered signal. A promise is a container that will capture only once the first
+	 * arriving error|next|complete signal to this {@link Stream}. It is useful to coordinate on single data streams or
+	 * await for any signal.
 	 *
 	 * @return a new {@link Promise}
 	 * @since 2.0
@@ -1183,7 +1332,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Return the promise of N signals collected into an array list.
 	 *
-	 * @param maximum list size and therefore events signal to listen for
+	 * @param maximum
+	 * 		list size and therefore events signal to listen for
+	 *
 	 * @return the buffered collection
 	 * @since 2.0
 	 */
@@ -1208,7 +1359,9 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	/**
 	 * Blocking call to eagerly fetch values from this stream
 	 *
-	 * @param maximum queue capacity, a full queue might block the stream producer.
+	 * @param maximum
+	 * 		queue capacity, a full queue might block the stream producer.
+	 *
 	 * @return the buffered queue
 	 * @since 2.0
 	 */
@@ -1275,10 +1428,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Send an element of parameterized type {link O} to all the attached {@link Subscriber}.
-	 * A Stream must be in READY state to dispatch signals and will fail fast otherwise (IllegalStateException).
+	 * Send an element of parameterized type {link O} to all the attached {@link Subscriber}. A Stream must be in READY
+	 * state to dispatch signals and will fail fast otherwise (IllegalStateException).
 	 *
-	 * @param ev the data to forward
+	 * @param ev
+	 * 		the data to forward
+	 *
 	 * @since 2.0
 	 */
 	public void broadcastNext(final O ev) {
@@ -1302,15 +1457,17 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Send an error to all the attached {@link Subscriber}.
-	 * A Stream must be in READY state to dispatch signals and will fail fast otherwise (IllegalStateException).
+	 * Send an error to all the attached {@link Subscriber}. A Stream must be in READY state to dispatch signals and will
+	 * fail fast otherwise (IllegalStateException).
 	 *
-	 * @param throwable the error to forward
+	 * @param throwable
+	 * 		the error to forward
+	 *
 	 * @since 2.0
 	 */
 	public void broadcastError(final Throwable throwable) {
 		//log.debug("event [" + throwable + "] by: " + getClass().getSimpleName());
-		if(!checkState()){
+		if (!checkState()) {
 			if (log.isDebugEnabled()) {
 				log.debug("error dropped by: " + getClass().getSimpleName() + ":" + this, throwable);
 			}
@@ -1323,7 +1480,7 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 		if (downstreamSubscription == null) {
 			log.error(this.getClass().getSimpleName() + " > broadcastError:" + this, new Exception(debug().toString(),
-					throwable));
+			                                                                                       throwable));
 			return;
 		}
 
@@ -1331,8 +1488,8 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	}
 
 	/**
-	 * Send a complete event to all the attached {@link Subscriber} ONLY IF the underlying state is READY.
-	 * Unlike {@link #broadcastNext(Object)} and {@link #broadcastError(Throwable)} it will simply ignore the signal.
+	 * Send a complete event to all the attached {@link Subscriber} ONLY IF the underlying state is READY. Unlike {@link
+	 * #broadcastNext(Object)} and {@link #broadcastError(Throwable)} it will simply ignore the signal.
 	 *
 	 * @since 2.0
 	 */
@@ -1392,13 +1549,16 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		return state;
 	}
 
+	protected void setState(State state) {
+		this.state = state;
+	}
+
 	public Throwable getError() {
 		return error;
 	}
 
 	/**
-	 * Return defined {@link Stream} capacity, used to drive new {@link org.reactivestreams.Subscription}
-	 * request needs.
+	 * Return defined {@link Stream} capacity, used to drive new {@link org.reactivestreams.Subscription} request needs.
 	 *
 	 * @return long capacity for this {@link Stream}
 	 */
@@ -1450,23 +1610,12 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 
 	}
 
-	protected void setState(State state) {
-		this.state = state;
-	}
-
 	private void callError(StreamSubscription<O> subscription, Throwable cause) {
 		subscription.onError(cause);
 	}
 
 	public final boolean checkState() {
 		return state == State.READY;
-	}
-
-	public static enum State {
-		READY,
-		ERROR,
-		COMPLETE,
-		SHUTDOWN
 	}
 
 	public void dispatch(Consumer<Void> action) {
@@ -1495,7 +1644,6 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		return dispatcher;
 	}
 
-
 	/**
 	 * Get the assigned {@link reactor.core.Environment}.
 	 *
@@ -1503,6 +1651,14 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 	 */
 	public Environment getEnvironment() {
 		return environment;
+	}
+
+
+	public static enum State {
+		READY,
+		ERROR,
+		COMPLETE,
+		SHUTDOWN
 	}
 
 }

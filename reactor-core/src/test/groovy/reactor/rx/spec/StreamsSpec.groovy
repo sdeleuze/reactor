@@ -448,7 +448,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source1 = Streams.<Integer> defer()
 			def source2 = Streams.<Integer> defer()
-			def zippedStream = Streams.zip(source1, source2){ it.t1 + it.t2 }
+			def zippedStream = Streams.zip(source1, source2) { it.t1 + it.t2 }
 			def tap = zippedStream.tap()
 
 		when:
@@ -1125,8 +1125,8 @@ class StreamsSpec extends Specification {
 					.throttle(avgTime)
 					.elapsed()
 					.reduce { Tuple2<Tuple2<Long, Integer>, Long> acc ->
-						acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
-					}
+				acc.t2 ? ((acc.t1.t1 + acc.t2) / 2) : acc.t1.t1
+			}
 
 			def value = reduced.tap()
 			println source.debug()
@@ -1150,14 +1150,14 @@ class StreamsSpec extends Specification {
 	def 'time-slices of average'() {
 		given:
 			'a source and a throttled stream'
-			def source = Streams.<Integer>defer(environment)
+			def source = Streams.<Integer> defer(environment)
 			def latch = new CountDownLatch(1)
 			long avgTime = 150l
 
 			def reduced = source
 					.buffer()
 					.throttle(avgTime)
-					.map { timeWindow ->  timeWindow.size() }
+					.map { timeWindow -> timeWindow.size() }
 					.finallyDo { latch.countDown() }
 
 			def value = reduced.tap()
@@ -1552,7 +1552,7 @@ class StreamsSpec extends Specification {
 		and:
 			'sorted operation is added for up to 3 elements ordered at once and the stream is retrieved'
 			value = stream.sort(3).buffer(6).tap().get()
-		println stream.debug()
+			println stream.debug()
 
 		then:
 			'it is available'
@@ -1602,6 +1602,19 @@ class StreamsSpec extends Specification {
 		then:
 			'the second is the last available'
 			value2.get() == 'test2'
+	}
+
+	def 'values in a Stream can be collected'() {
+		given:
+			'a composable with initial values'
+			def stream = Streams.defer(['test', 'test2', 'test3'])
+
+		when:
+			'values are collected'
+			def values = stream.collect(3).tap()
+
+		then:
+			values.get() == ['test', 'test2', 'test3']
 	}
 
 	static class SimplePojo {
