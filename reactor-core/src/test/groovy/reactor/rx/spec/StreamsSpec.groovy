@@ -448,7 +448,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source1 = Streams.<Integer> defer()
 			def source2 = Streams.<Integer> defer()
-			def zippedStream = Streams.zip(source1, source2) { println it; it.t1 + it.t2 }
+			def zippedStream = Streams.zip(source1, source2) { it.t1 + it.t2 }
 			def tap = zippedStream.tap()
 
 		when:
@@ -1638,6 +1638,19 @@ class StreamsSpec extends Specification {
 		then:
 			'the second is the last available'
 			value2.get() == 'test2'
+	}
+
+	def 'values in a Stream can be collected'() {
+		given:
+			'a composable with initial values'
+			def stream = Streams.defer(['test', 'test2', 'test3'])
+
+		when:
+			'values are collected'
+			def values = stream.collect(3).tap()
+
+		then:
+			values.get() == ['test', 'test2', 'test3']
 	}
 
 	static class SimplePojo {
