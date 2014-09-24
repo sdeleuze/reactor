@@ -829,60 +829,37 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		return connect(d);
 	}
 
-	public CollectAction<O> collectAll() {
-		CollectAction<O> c = new CollectAction<O>(dispatcher, -1, -1, null, null, null, null, null);
+	public Action<O, Window<O>> collectAll() {
+		CollectAllAction<O> c = new CollectAllAction<O>(dispatcher);
 		return connect(c);
 	}
 
-	public CollectAction<O> collect(long amount) {
-		CollectAction<O> c = new CollectAction<O>(dispatcher, amount, -1, null, null, null, null, null);
+	public Action<O, Window<O>> collectOnly(long amount) {
+		CollectOnlyAction<O> c = new CollectOnlyAction<O>(dispatcher, amount);
 		return connect(c);
 	}
 
-	public CollectAction<O> collectFor(long time, TimeUnit unit) {
-		CollectAction<O> c = new CollectAction<O>(dispatcher, -1, time, unit, environment.getRootTimer(), null, null, null);
+	public CollectOnlyAction<O> collectFor(long time, TimeUnit unit) {
+		return null;
+	}
+
+	public Action<O, Window<O>> collectWhile(Predicate<O> untilFalseTrigger) {
+		CollectWhileAction<O> c = new CollectWhileAction<O>(dispatcher, untilFalseTrigger);
 		return connect(c);
 	}
 
-	public CollectAction<O> collectWhile(Predicate<O> whenFalseTrigger) {
-		CollectAction<O> c = new CollectAction<O>(dispatcher, -1, -1, null, null, whenFalseTrigger, null, null);
+	public Action<O, Window<O>> collectUntil(Predicate<O> untilTrueTrigger) {
+		CollectUntilAction<O> c = new CollectUntilAction<O>(dispatcher, untilTrueTrigger);
 		return connect(c);
 	}
 
-	public CollectAction<O> collectUntil(Predicate<O> whenTrueTrigger) {
-		CollectAction<O> c = new CollectAction<O>(dispatcher, -1, -1, null, null, null, whenTrueTrigger, null);
+	public Action<O, Window<O>> collectDistinct() {
+		CollectDistinctAction<O> c = new CollectDistinctAction<O>(dispatcher);
 		return connect(c);
 	}
 
-	public CollectAction<O> collectDistinct() {
-		return collectDistinct(new Predicate<O>() {
-			O last = null;
-
-			@Override
-			public boolean test(O o) {
-				boolean distinct = (null == last || last != o || !last.equals(o));
-				last = o;
-				return distinct;
-			}
-		});
-	}
-
-	public <K> CollectAction<O> collectDistinctByKey(final Function<O, K> keyMapper) {
-		return collectDistinct(new Predicate<O>() {
-			K last = null;
-
-			@Override
-			public boolean test(O o) {
-				K key = keyMapper.apply(o);
-				boolean distinct = (null == last || last != key || !last.equals(key));
-				last = key;
-				return distinct;
-			}
-		});
-	}
-
-	public CollectAction<O> collectDistinct(Predicate<O> distinctTrigger) {
-		CollectAction<O> c = new CollectAction<O>(dispatcher, -1, -1, null, null, null, null, distinctTrigger);
+	public <K> Action<O, Window<O>> collectDistinctByKey(final Function<O, K> keyMapper) {
+		CollectDistinctByKeyAction<O, K> c = new CollectDistinctByKeyAction<O, K>(dispatcher, keyMapper);
 		return connect(c);
 	}
 
