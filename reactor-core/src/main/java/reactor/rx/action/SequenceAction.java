@@ -21,12 +21,18 @@ public abstract class SequenceAction<T> extends Action<T, Window<T>> {
 	}
 
 	@Override
+	protected void doComplete() {
+		doSweep();
+		super.doComplete();
+	}
+
+	@Override
 	protected void doNext(T val) {
 		if (isStart()) {
 			onSequenceStart(values);
 		}
 
-		if (null != getSweepTrigger() && getSweepTrigger().test(val)) {
+		if (shouldSweep(val)) {
 			doSweep(val, values);
 		} else {
 			onSequenceNext(val, values);
@@ -35,6 +41,10 @@ public abstract class SequenceAction<T> extends Action<T, Window<T>> {
 		if (isEnd()) {
 			onSequenceEnd(values);
 		}
+	}
+
+	protected boolean shouldSweep(T val) {
+		return (null != getSweepTrigger() && getSweepTrigger().test(val));
 	}
 
 	protected Predicate<T> getSweepTrigger() {

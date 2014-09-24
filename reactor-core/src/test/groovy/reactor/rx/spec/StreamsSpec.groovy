@@ -25,6 +25,7 @@ import reactor.event.selector.Selectors
 import reactor.function.Function
 import reactor.function.support.Tap
 import reactor.rx.Stream
+import reactor.rx.action.Window
 import reactor.tuple.Tuple2
 import spock.lang.Shared
 import spock.lang.Specification
@@ -32,6 +33,9 @@ import spock.lang.Specification
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+
+import static org.hamcrest.MatcherAssert.assertThat
+import static org.hamcrest.collection.IsIterableContainingInOrder.contains
 
 class StreamsSpec extends Specification {
 
@@ -1643,14 +1647,57 @@ class StreamsSpec extends Specification {
 	def 'values in a Stream can be collected'() {
 		given:
 			'a composable with initial values'
-			def stream = Streams.defer(['test', 'test2', 'test3'])
+			def stream = Streams.defer(['test', 'test2', 'test3', 'test4'])
 
 		when:
-			'values are collected'
-			def values = stream.collect(3).tap()
+			'all values are collected'
+			def values = stream.collectAll().tap()
 
 		then:
-			values.get() == ['test', 'test2', 'test3']
+			assertThat("Has all three values", values.get(), contains('test', 'test2', 'test3', 'test4'))
+
+		when:
+			'two values are collected'
+			List<Window<String>> windows = []
+			stream.collectOnly(2).consume { windows << it }
+
+		then:
+			assertThat("Has first two values", windows[0], contains('test', 'test2'))
+			assertThat("Has last two values", windows[1], contains('test3', 'test4'))
+
+		when:
+			'two values are collected using collectUntil'
+			windows = []
+			stream.collectUntil { it == 'test3' }.consume { windows << it }
+
+		then:
+			assertThat("Has first two values", windows[0], contains('test', 'test2'))
+			assertThat("Has last two values", windows[1], contains('test3', 'test4'))
+
+		when:
+			'two values are collected using collectWhile'
+			windows = []
+			stream.collectWhile { it != 'test3' }.consume { windows << it }
+
+		then:
+			assertThat("Has first two values", windows[0], contains('test', 'test2'))
+			assertThat("Has last two values", windows[1], contains('test3', 'test4'))
+
+		when:
+			'keyed data is collected'
+			def data = [
+					['group': 'one', 'key': 'value1'],
+					['group': 'one', 'key': 'value2'],
+					['group': 'two', 'key': 'value1'],
+					['group': 'three', 'key': 'value1']
+			]
+			stream = Streams.defer(data)
+			windows = []
+			stream.collectDistinctByKey { it.group }.consume { windows << it }
+
+		then:
+			'data is grouped'
+			windows[0].find { it.key == 'value2' }?.group == 'one'
 	}
 
 	static class SimplePojo {

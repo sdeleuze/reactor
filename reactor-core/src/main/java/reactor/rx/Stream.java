@@ -853,6 +853,18 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		return connect(c);
 	}
 
+	public Action<O, Window<O>> collectOrTimeout(Predicate<O> untilTrueTrigger,
+	                                             long time,
+	                                             TimeUnit unit) {
+		return null;
+	}
+
+	public Action<O, Window<O>> collectOrFlush(Predicate<O> untilTrueTrigger,
+	                                           long time,
+	                                           TimeUnit unit) {
+		return null;
+	}
+
 	public Action<O, Window<O>> collectDistinct() {
 		CollectDistinctAction<O> c = new CollectDistinctAction<O>(dispatcher);
 		return connect(c);

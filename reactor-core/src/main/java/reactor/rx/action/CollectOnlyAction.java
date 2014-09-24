@@ -55,6 +55,7 @@ public class CollectOnlyAction<T> extends SequenceAction<T> {
 	protected void doSweep(T val, List<T> values) {
 		values.add(val);
 		broadcastNext(new Window<T>(dispatcher, new ArrayList<T>(values)));
+		atEnd = true;
 	}
 
 	@Override

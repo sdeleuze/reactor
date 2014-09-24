@@ -4,10 +4,13 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.function.Function;
 import reactor.function.Predicate;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @author Jon Brisbin
  */
-public class CollectDistinctByKeyAction<T, K> extends CollectWhileAction<T> {
+public class CollectDistinctByKeyAction<T, K> extends CollectUntilAction<T> {
 
 	public CollectDistinctByKeyAction(Dispatcher dispatcher, Function<T, K> keyMapper) {
 		super(dispatcher, new DistinctByKeyPredicate<T, K>(keyMapper));
@@ -25,7 +28,7 @@ public class CollectDistinctByKeyAction<T, K> extends CollectWhileAction<T> {
 		@Override
 		public boolean test(T t) {
 			K key = keyMapper.apply(t);
-			boolean distinct = (last != key || !last.equals(key));
+			boolean distinct = (null != last && (last != key || !last.equals(key)));
 			last = key;
 			return distinct;
 		}
