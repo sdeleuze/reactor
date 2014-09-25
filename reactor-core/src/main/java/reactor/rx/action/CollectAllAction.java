@@ -19,7 +19,7 @@ public class CollectAllAction<T> extends SequenceAction<T> {
 		if (null != val) {
 			values.add(val);
 		}
-		broadcastNext(new Window<T>(dispatcher, new ArrayList<T>(values)));
+		broadcastNext(new ArrayList<T>(values));
 		values.clear();
 	}
 

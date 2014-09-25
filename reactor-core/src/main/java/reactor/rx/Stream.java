@@ -46,6 +46,7 @@ import reactor.util.Assert;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -829,48 +830,48 @@ public class Stream<O> implements Pausable, Publisher<O>, Recyclable {
 		return connect(d);
 	}
 
-	public Action<O, Window<O>> collectAll() {
+	public Action<O, Collection<O>> collectAll() {
 		CollectAllAction<O> c = new CollectAllAction<O>(dispatcher);
 		return connect(c);
 	}
 
-	public Action<O, Window<O>> collectOnly(long amount) {
+	public Action<O, Collection<O>> collectOnly(long amount) {
 		CollectOnlyAction<O> c = new CollectOnlyAction<O>(dispatcher, amount);
 		return connect(c);
 	}
 
-	public CollectOnlyAction<O> collectFor(long time, TimeUnit unit) {
+	public Action<O, Collection<O>> collectFor(long time, TimeUnit unit) {
 		return null;
 	}
 
-	public Action<O, Window<O>> collectWhile(Predicate<O> untilFalseTrigger) {
+	public Action<O, Collection<O>> collectWhile(Predicate<O> untilFalseTrigger) {
 		CollectWhileAction<O> c = new CollectWhileAction<O>(dispatcher, untilFalseTrigger);
 		return connect(c);
 	}
 
-	public Action<O, Window<O>> collectUntil(Predicate<O> untilTrueTrigger) {
+	public Action<O, Collection<O>> collectUntil(Predicate<O> untilTrueTrigger) {
 		CollectUntilAction<O> c = new CollectUntilAction<O>(dispatcher, untilTrueTrigger);
 		return connect(c);
 	}
 
-	public Action<O, Window<O>> collectOrTimeout(Predicate<O> untilTrueTrigger,
+	public Action<O, Collection<O>> collectOrTimeout(Predicate<O> untilTrueTrigger,
 	                                             long time,
 	                                             TimeUnit unit) {
 		return null;
 	}
 
-	public Action<O, Window<O>> collectOrFlush(Predicate<O> untilTrueTrigger,
+	public Action<O, Collection<O>> collectOrFlush(Predicate<O> untilTrueTrigger,
 	                                           long time,
 	                                           TimeUnit unit) {
 		return null;
 	}
 
-	public Action<O, Window<O>> collectDistinct() {
+	public Action<O, Collection<O>> collectDistinct() {
 		CollectDistinctAction<O> c = new CollectDistinctAction<O>(dispatcher);
 		return connect(c);
 	}
 
-	public <K> Action<O, Window<O>> collectDistinctByKey(final Function<O, K> keyMapper) {
+	public <K> Action<O, Collection<O>> collectDistinctByKey(final Function<O, K> keyMapper) {
 		CollectDistinctByKeyAction<O, K> c = new CollectDistinctByKeyAction<O, K>(dispatcher, keyMapper);
 		return connect(c);
 	}

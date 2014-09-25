@@ -4,12 +4,13 @@ import reactor.event.dispatch.Dispatcher;
 import reactor.function.Predicate;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
  * @author Jon Brisbin
  */
-public abstract class SequenceAction<T> extends Action<T, Window<T>> {
+public abstract class SequenceAction<T> extends Action<T, Collection<T>> {
 
 	private final Predicate<T> sweepTrigger;
 	private final List<T>      values;

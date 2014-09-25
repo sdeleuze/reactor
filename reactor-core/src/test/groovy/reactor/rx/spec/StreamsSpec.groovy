@@ -1648,6 +1648,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with initial values'
 			def stream = Streams.defer(['test', 'test2', 'test3', 'test4'])
+			List<List<String>> slices = []
 
 		when:
 			'all values are collected'
@@ -1658,30 +1659,29 @@ class StreamsSpec extends Specification {
 
 		when:
 			'two values are collected'
-			List<Window<String>> windows = []
-			stream.collectOnly(2).consume { windows << it }
+			stream.collectOnly(2).consume { slices << it }
 
 		then:
-			assertThat("Has first two values", windows[0], contains('test', 'test2'))
-			assertThat("Has last two values", windows[1], contains('test3', 'test4'))
+			assertThat("Has first two values", slices[0], contains('test', 'test2'))
+			assertThat("Has last two values", slices[1], contains('test3', 'test4'))
 
 		when:
 			'two values are collected using collectUntil'
-			windows = []
-			stream.collectUntil { it == 'test3' }.consume { windows << it }
+			slices.clear()
+			stream.collectUntil { it == 'test3' }.consume { slices << it }
 
 		then:
-			assertThat("Has first two values", windows[0], contains('test', 'test2'))
-			assertThat("Has last two values", windows[1], contains('test3', 'test4'))
+			assertThat("Has first two values", slices[0], contains('test', 'test2'))
+			assertThat("Has last two values", slices[1], contains('test3', 'test4'))
 
 		when:
 			'two values are collected using collectWhile'
-			windows = []
-			stream.collectWhile { it != 'test3' }.consume { windows << it }
+			slices.clear()
+			stream.collectWhile { it != 'test3' }.consume { slices << it }
 
 		then:
-			assertThat("Has first two values", windows[0], contains('test', 'test2'))
-			assertThat("Has last two values", windows[1], contains('test3', 'test4'))
+			assertThat("Has first two values", slices[0], contains('test', 'test2'))
+			assertThat("Has last two values", slices[1], contains('test3', 'test4'))
 
 		when:
 			'keyed data is collected'
@@ -1692,12 +1692,21 @@ class StreamsSpec extends Specification {
 					['group': 'three', 'key': 'value1']
 			]
 			stream = Streams.defer(data)
-			windows = []
-			stream.collectDistinctByKey { it.group }.consume { windows << it }
+			slices.clear()
+			stream.collectDistinctByKey { it.group }.consume { slices << it }
 
 		then:
 			'data is grouped'
-			windows[0].find { it.key == 'value2' }?.group == 'one'
+			slices[0].find { it.key == 'value2' }?.group == 'one'
+
+		when:
+			'data is collected by distinctness'
+			stream = Streams.defer(['test', 'test', 'test2', 'test2'])
+			values = []
+			stream.collectDistinct().consume { values.addAll(it.unique(false)) }
+
+		then:
+			assertThat("Has two distinct values", values, contains('test', 'test2'))
 	}
 
 	static class SimplePojo {

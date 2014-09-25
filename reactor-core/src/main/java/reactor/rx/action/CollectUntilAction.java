@@ -17,9 +17,11 @@ public class CollectUntilAction<T> extends SequenceAction<T> {
 
 	@Override
 	protected void doSweep(T val, List<T> values) {
-		broadcastNext(new Window<T>(dispatcher, new ArrayList<T>(values)));
+		broadcastNext(new ArrayList<T>(values));
 		onSequenceEnd(values);
-		values.add(val);
+		if (null != val) {
+			values.add(val);
+		}
 	}
 
 }
